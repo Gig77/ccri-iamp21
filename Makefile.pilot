@@ -1,0 +1,35 @@
+export SHELLOPTS:=errexit:pipefail
+SHELL=/bin/bash  # required to make pipefail work
+.SECONDARY:      # do not delete any intermediate files
+LOG = perl -ne 'use POSIX qw(strftime); $$|=1; print strftime("%F %02H:%02M:%S ", localtime), $$ARGV[0], "$@: $$_";'
+
+PROJECT_HOME=~/iamp
+TRIM_BEFORE_BASE=8
+
+# download BAM files from CSF
+# wget -c --quiet --no-check-certificate --auth-no-challenge --user 'Christine.Portsmouth' --password 'RS5YC4LE8E' http://ngs.csf.ac.at/data/18529_GTCCGC_C4VVVACXX_1_20140704B_20140704.bam &
+# wget -c --quiet --no-check-certificate --auth-no-challenge --user 'Christine.Portsmouth' --password 'RS5YC4LE8E' http://ngs.csf.ac.at/data/18530_TAGCTT_C4VVVACXX_1_20140704B_20140704.bam &
+# wget -c --quiet --no-check-certificate --auth-no-challenge --user 'Christine.Portsmouth' --password 'RS5YC4LE8E' http://ngs.csf.ac.at/data/18531_AGTTCC_C4VVVACXX_1_20140704B_20140704.bam &
+# wget -c --quiet --no-check-certificate --auth-no-challenge --user 'Christine.Portsmouth' --password 'RS5YC4LE8E' http://ngs.csf.ac.at/data/18532_CGATGT_C4VVVACXX_1_20140704B_20140704.bam &
+# wget -c --quiet --no-check-certificate --auth-no-challenge --user 'Christine.Portsmouth' --password 'RS5YC4LE8E' http://ngs.csf.ac.at/data/18533_ATCACG_C4VVVACXX_1_20140704B_20140704.bam &
+# wget -c --quiet --no-check-certificate --auth-no-challenge --user 'Christine.Portsmouth' --password 'RS5YC4LE8E' http://ngs.csf.ac.at/data/18534_TGACCA_C4VVVACXX_1_20140704B_20140704.bam &
+# wget -c --quiet --no-check-certificate --auth-no-challenge --user 'Christine.Portsmouth' --password 'RS5YC4LE8E' http://ngs.csf.ac.at/data/18535_TTAGGC_C4VVVACXX_1_20140704B_20140704.bam &
+# wget -c --quiet --no-check-certificate --auth-no-challenge --user 'Christine.Portsmouth' --password 'RS5YC4LE8E' http://ngs.csf.ac.at/data/18536_ACAGTG_C4VVVACXX_1_20140704B_20140704.bam & 
+
+SAMPLES=18529_GTCCGC_C4VVVACXX_1_20140704B_20140704 \
+		18530_TAGCTT_C4VVVACXX_1_20140704B_20140704 \
+		18531_AGTTCC_C4VVVACXX_1_20140704B_20140704 \
+		18532_CGATGT_C4VVVACXX_1_20140704B_20140704 \
+		18533_ATCACG_C4VVVACXX_1_20140704B_20140704 \
+		18534_TGACCA_C4VVVACXX_1_20140704B_20140704 \
+		18535_TTAGGC_C4VVVACXX_1_20140704B_20140704 \
+		18536_ACAGTG_C4VVVACXX_1_20140704B_20140704 \
+		test
+
+all: gsnap htseq qc blast fastqc
+
+include ~/generic/scripts/rna-seq/gsnap.mk
+include ~/generic/scripts/rna-seq/htseq.mk
+include ~/generic/scripts/rna-seq/qc.mk
+include ~/generic/scripts/rna-seq/blast.mk
+include ~/generic/scripts/rna-seq/fastqc.mk
