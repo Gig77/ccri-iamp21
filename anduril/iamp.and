@@ -1,0 +1,750 @@
+// --------------- //
+//  CONFIGURATION  //
+// --------------- //
+
+title = "iAMP21 RNA-seq"
+authors = "Christian Frech"
+useFunct = false
+gtf = INPUT(path="/mnt/biowaste/data/christian/chrisi/data/current/ensembl/Homo_sapiens.GRCh37.75.etv6runx1.gtf.gz")
+ensembl = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/etc/ensemblHomoSapiens.properties") /** JDBC parameters for Ensembl~\cite{Flicek2008} database. */
+geneDescr = INPUT(path="/mnt/biowaste/data2/christian.frech/iamp/results/current/anduril/ensembl.homo_sapiens_73_37.geneAnnotations.tsv")
+geneGO = INPUT(path="/opt/moksiskaan/pipeline/exec/output/geneGO_9606.csv")  /** Gene Ontology annotations of all genes */
+go = INPUT(path="/opt/moksiskaan/pipeline/exec/output/goDB-in.obo")  /** Gene Ontology~\cite{Ashburner2000} */
+similarityTable = INPUT(path="/opt/moksiskaan/pipeline/exec/output/GOSimilarity_9606.csv") // Moksiskaan specific similarities for the Gene ontology terms
+enrichmentTable = INPUT(path="/opt/moksiskaan/pipeline/exec/output/GOEnrichment_9606.csv") // Moksiskaan specific a priori probabilities for the Gene ontology terms.
+fcLimit  = 2.00
+qLimit   = 0.10
+pLimit   = 0.0001
+minExpr  = 3.00
+maxNA    = 0.90
+
+moksiskaanInit = MoksiskaanInit(showLog='EnsemblImport,PathwayCommonsImport,PINAImport,WikiPathways')
+
+rConfig = RConfigurationReport(packages = "base,csbl.go,DESeq2,igraph", sectionType = "subsection")
+bibtexMoksiskaan = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/components/report-BibTeX/moksiskaan.bib")
+bibtexSequencing = INPUT(path="/usr/local/share/anduril-bundles/sequencing/components/report-BibTeX/sequencing.bib")
+docTemplate = LatexTemplate(authors  = std.quote(authors, type="LaTeX"),
+                            bibtex1  = rConfig.citations,
+                            bibtex2  = bibtexMoksiskaan,
+                            bibtex3  = bibtexSequencing,
+                            title    = std.quote(title, type="LaTeX"),
+                            printTOC = true)
+
+
+// ------------------- //
+//  SAMPLES AND GROUPS //
+// ------------------- //
+
+seqIn = INPUT(path="/mnt/biowaste/data2/christian.frech/iamp/results/current/gsnap", recursive=false)
+seqInArray = Folder2Array(folder1 = seqIn, filePattern = "C57C3ACXX_CV_([^_]+)_.*[.]bam$")
+
+annotation = INPUT(path="/mnt/biowaste/data2/christian.frech/iamp/results/current/qlucore/annotations.txt")
+
+sampleGroups = TableQuery(table1 = annotation @require,
+                          query  = """\
+	SELECT "Subtype"                                     AS "ID",
+		GROUP_CONCAT("Name" ORDER BY "Name" SEPARATOR ',') AS "Members",
+		'median'                                           AS "Type",
+		"Subtype"                                          AS "Description"
+		FROM   table1
+		GROUP  BY "Subtype"
+		ORDER BY "ID"
+                                   """)
+
+comparisons = SampleGroupCreator(data1        = sampleGroups,
+                              pattern1     = "iAMP,PC",
+                              pattern2     = "iAMP,ER",
+                              pattern3     = "ER,PC",
+                              pattern4     = "(iAMP|PC|ER),CD19.",
+                              definition1  = "fciAMPvsPC,ratio,iAMP21 vs. P2RY8-CRLF2",
+                              definition2  = "fciAMPvsER,ratio,iAMP21 vs. ETV6-RUNX1",
+                              definition3  = "fcERvsPC,ratio,ETV6-RUNX1 vs. P2RY8-CRLF2",
+                              definition4  = "fc$1vsCD19,ratio,$1 vs. CD19+",
+                              patternTypes = "relist,relist,relist,relist",
+                              columns      = "ID")
+
+// ------------------ //
+//  EXPRESSION MATRIX //
+// ------------------ //
+
+bamCounts = HTSeqBam2Counts(alignments    = seqInArray,
+							annotationGTF = gtf,
+                            dexseq_dir    = "/opt/DEXSeq/python_scripts/",
+                            entity        = "Gene",
+                            format        = "bam",
+                            sorted        = true)
+
+deseqExprMatrix = DESeqExpr(geneCounts  = bamCounts.gene,
+                  counts      = false,
+                  maxNA       = maxNA,
+                  normalized  = true)
+
+// ----------------- //
+//  QUALITY CONTROL  //
+// ----------------- //
+
+/** Prepares some quality control plots for the given expression matrix. */
+function ExprQC(Matrix           expr,
+                SampleGroupTable groups,
+                string           title) ->
+               (Latex            report) {
+               
+    cumsum = Plot2D(y              = expr,
+                    sectionTitle   = "Distribution of the expression values",
+                    caption        = "Ordered list of expression values",
+                    legendPosition = "off",
+                    xLabel         = "genes",
+                    yLabel         = "expression level",
+                    title          = "",
+                    sort           = true,
+                    plotType       = "l",
+                    imageType      = "single",
+                    height         = 11)
+
+    hclust = ClusterReport(matr         = expr,
+                           showDistance = false,
+                           sectionTitle = "Hierarchical clustering of the samples")
+
+    boxplot = BoxPlot(matr1      = expr,
+                      groups     = groups,
+                      caption1   = "",
+                      height     = 5,
+                      width      = 9,
+                      pagebreak  = true,
+                      drawLegend = false,
+                      plotType   = "boxplot",
+                      pngImage   = true,
+                      title1     = "Distributions of the expression values per sample",
+                      @bind      = cumsum)
+
+    mds2D = MDSPlot(expr         = expr,
+                    groups       = groups,
+                    sectionTitle = "Two dimensional sample clustering",
+                    dimensions   = 2,
+                    plotNames    = true,
+                    width        = 10,
+                    pagebreak    = true,
+                    caption       = "Multidimensional scaling. Sample distances are proportional to differences in global gene expression.",
+                    @bind        = boxplot)
+
+    mds3D = MDSPlot(expr         = expr,
+                    groups       = groups,
+                    sectionTitle = "Three dimensional sample clustering",
+                    dimensions   = 3,
+                    plotNames    = true,
+                    width        = 10,
+                    @bind        = mds2D)
+
+    report = LatexCombiner(cumsum,
+                           boxplot,
+                           hclust.report,
+                           mds2D.report,
+//                           mds3D.report,
+                           sectionTitle = "Quality control: "+title,
+                           sectionType  = "section",
+                           pagebreak    = true)
+    return report
+}
+
+
+deseqNorm = REvaluate(var1 = bamCounts.gene @require @doc="Matrix with raw read counts",
+                      script = StringInput(content="""
+									samples <- read.delim(paste0(var1, "/_index"))
+									names(samples) <- c("sampleName", "fileName")
+									library(DESeq2)
+									dds  <- DESeqDataSetFromHTSeqCount(sampleTable = samples, directory="/", design=~1)
+									rld <- rlog(dds)
+						  			table.out <- assay(rld)
+						       """)
+					  )
+
+exprQCRaw  = ExprQC(force expr   = deseqExprMatrix.expr,
+                    force groups = sampleGroups,
+                    title        = "DESeq2 expression signal")
+
+exprQCNorm  = ExprQC(force expr   = deseqNorm.table,
+                     force groups = sampleGroups,
+                     title        = "Normalized (rlog) DESeq2 signal")
+
+
+
+// -------------------------------------- //
+//  DIFFERENTIAL GENE EXPRESSION ANALYSIS //
+// -------------------------------------- //
+
+gMoksisA = PiispanhiippaAnnotator(sourceKeys = deseqExprMatrix.expr @require,
+                                  connection = moksiskaanInit.connection,
+                                  inputDB    = XrefType_Ensembl_gene,
+                                  organism   = Organism_Homo_sapiens,
+                                  targetDB   = "BioentityName,DNARegion")
+
+geneNames = CSVCleaner(original   = gMoksisA.bioAnnotation,
+                       columns    = "sourceKey,BioentityName,DNARegion",
+                       rename     = "sourceKey=Ensembl,BioentityName=Gene",
+                       skipQuotes = "*",
+                       trim       = true,
+                       @keep      = true)
+
+// fetch Ensembl gene description for later use in output lists
+// NOTE: this is INCREDIBLY slow (takes hours...); did this instead:
+// mysql --host=ensembldb.ensembl.org --port=5306 --database=homo_sapiens_core_73_37 --user=anonymous -B -A -e "select stable_id as ensembl,description from gene where description is not null;" > /mnt/biowaste/data2/christian.frech/iamp/results/current/anduril/ensembl.homo_sapiens_73_37.geneAnnotations.tsv
+// geneDescr = KorvasieniAnnotator(sourceKeys = geneNames,
+//                                 connection  = ensembl,
+//                                 inputType   = "Gene",
+//                                 inputDB     = ".GeneId",
+//                                 targetDB    = ".GeneDesc",
+//                                 keyColumn   = "Ensembl",
+//                                 rename      = ".GeneDesc=description",
+//                                 skipLevel   = "source",
+//                                 indicator   = false,
+//                                 unique      = true)
+
+stestR = StringInput(content="""\
+	myArray     <- Array.read(cf,"var1")
+	sNames      <- myArray$Key
+	g1N         <- unlist(strsplit(table1[table1[,'ID']==param1,'Members'],','))
+	g2N         <- unlist(strsplit(table1[table1[,'ID']==param2,'Members'],','))
+	condition   <- rep(NA, length(sNames))
+	condition[match(g1N,sNames)] <- param1
+	condition[match(g2N,sNames)] <- param2
+	condition   <- factor(x=condition, levels=c(param1,param2), ordered=FALSE)
+	sampleTable <- data.frame(sampleName = sNames,
+	                           fileName   = myArray$File,
+	                           condition  = condition)
+	sampleTable <- sampleTable[!is.na(condition),]	
+	rm(condition, sNames, table1)
+
+	library(DESeq2)
+	ddsHTSeq <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable,
+    	                                    directory   = "/",
+	     	                                design      = ~ condition)
+
+	ddsHTSeq  <- DESeq(ddsHTSeq)
+	res       <- results(ddsHTSeq)
+	table.out <- data.frame(ids=rownames(res), as.data.frame(res))
+
+	coln1 <- c('pvalue', 'padj', 'baseMean', 'log2FoldChange', 'lfcSE')
+	coln2 <- c('p',      'q',    'meanExpr', 'fc',             'fcSE')
+	coln2 <- paste(coln2, param3, sep='')
+	colnames(table.out)[match(coln1,colnames(table.out))] <- coln2
+""")
+
+gstats  = record(genes=geneNames)
+groups  = record()
+degLst  = record()
+eCSSRow = ""
+for comparison : std.itercsv(comparisons) {
+  gCase    = null
+  gControl = null
+  for g : std.split(comparison.Members, ',') {
+     if (gCase    == null) { gCase    = g } else
+     if (gControl == null) { gControl = g } else
+     std.fail("Too many groups listed for ", comparison.ID, " (", comparison.Description, ").", sep='')
+  }
+  setName = "stest_"+comparison.ID
+  std.echo("***** Comparing", gCase, "expressions against", gControl, "expressions: "+setName)
+  gLab = std.strReplace(comparison.ID, "^fc", "")
+  groups[gLab] = {
+    'id'       = gLab,
+    'caseG'    = gCase,
+    'controlG' = gControl,
+    'stest'    = setName,
+    'desc'     = comparison.Description
+  }
+  eCSSRow = "*\t"+comparison.ID+"\t0.00\ttrue\tNA\tNA\tNA\t#0000BB\t#ffffff\tNA\t<= -"+fcLimit+"\n"+
+            "*\t"+comparison.ID+"\t0.00\ttrue\tNA\tNA\tNA\t#00FF00\t#ffffff\tNA\t>= "+ fcLimit+"\n"+
+            "*\tp"+gLab+"\t0.00e00\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\n"+
+            "*\tq"+gLab+"\t0.00e00\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\n"+
+            "*\tp"+gLab+"\tNA\ttrue\tNA\tNA\tNA\t#ff0000\tNA\tNA\t<= "+pLimit+"\n"+
+            "*\tq"+gLab+"\tNA\ttrue\tNA\tNA\tNA\t#ff0000\tNA\tNA\t<= "+qLimit+"\n"+
+            eCSSRow
+
+  @out.table.filename = "stats.csv"
+  stest = REvaluate(var1   = bamCounts.gene   @require @doc="Gene specific read counts",
+                    table1 = sampleGroups     @require @doc="Sample sets",
+                    script = stestR,
+                    param1 = gControl,
+                    param2 = gCase,
+                    param3 = gLab,
+                    @name  = setName)
+  gstats[gLab] = stest.table
+
+  degCall = TableQuery(table1 = gstats[gLab] @require,
+                       query  = """\
+                                SELECT DISTINCT "ids"
+                                FROM   table1
+                                WHERE  (ABS("fc"""+gLab+'''")  >= '''+fcLimit+""") AND
+                                       ("p"""+gLab+'''"        <= '''+pLimit +""") AND
+                                       ("q"""+gLab+'''"        <= '''+qLimit +""") AND
+                                       ("meanExpr"""+gLab+'''" >= '''+minExpr+""")
+                                ORDER  BY 1
+                                """,
+                       @name  = "degs_"+gLab)
+  degLst[gLab] = degCall.table
+
+  // make 'CD19+' match in following regular expression 
+  gControlEscaped = std.strReplace(gControl,"\\+","\\\\+")
+    
+  samples = CSV2IDList(table1    = sampleGroups @require,
+                       columnIn  = "Members",
+                       columnOut = ".GeneId",
+                       isList    = true,
+                       regexp1   = "ID=("+gCase+"|"+gControlEscaped+")",
+                       @name     = "samples_"+gLab)
+  groups[gLab].samples = samples.ids
+}
+
+degSets = CSV2SetList(tables=degLst)
+
+degReportRefs = XrefLinkRule(moksiskaan = moksiskaanInit.connection,
+                             columns    = "Ensembl=Ensembl",
+                             xrefTypes  = XrefType_Ensembl_gene)
+
+goGroupTableRefs = XrefLinkRule(moksiskaan = moksiskaanInit.connection,
+                                columns    = "GO=GO,Ensembl=Gene",
+                                xrefTypes  = XrefType_Gene_Ontology+","+XrefType_Ensembl_gene,
+                                @enabled   = useFunct)
+
+statsAllTable = CSVJoin(array        = gstats @require,
+                        intersection = true)
+
+statsAllCSS = StringInput(content=std.concat(sep="\n",
+  "Row\tColumn\tFormat\tBold\tAlign\tFontSize\tUnderline\tTextColor\tBGColor\tBorder\tCondition",
+  "1\t*\tNA\ttrue\tNA\t12\ttrue\t#000000\t#ffffff\tNA\tNA",
+  "*\tEnsembl\tNA\tfalse\tleft\t6\tfalse\tNA\tNA\tNA\tNA",
+  "*\tDNARegion\tNA\tNA\tleft\t6\tfalse\tNA\tNA\tNA\tNA",
+  eCSSRow
+))
+
+statsAllExcel = CSV2Excel(csv           = statsAllTable,
+                          refs          = degReportRefs,
+                          style         = statsAllCSS,
+                          frozenColumns = 2,
+                          frozenRows    = 1,
+                          sheetNames    = "statistics")
+
+venn = VennDiagram(sets         = degSets,
+                    cexSetName   = 0.3,
+                    cexSetSize   = 0.3,
+                    doWeights    = true,
+                    sets1        = "iAMPvsPC,iAMPvsER,ERvsPC",
+                    sets2        = "iAMPvsCD19,PCvsCD19,ERvsCD19",
+                    sectionTitle = "Gene set comparisons",
+                    sectionType  = "subsection",
+                    types        = "circles")
+
+degReports = record(venn=venn.report)
+
+// --------- //
+//  HEATMAPS //
+// --------- //
+
+geneGOA = TableQuery(table1 = geneGO    @require,
+                     table2 = geneNames @require,
+                     query  = """\
+                              SELECT O.*, A."Gene"
+                              FROM   table1 O, table2 A
+                              WHERE  (O."xref10" = A."Ensembl")
+                              """)
+
+degTables = record()
+for ID, group : groups {
+  std.echo("***** Preparing results for", ID, "comparison.")
+  degs  = degLst[ID]
+  stest = gstats[ID]
+
+  degTable = TableQuery(table1 = degs      @require,
+                        table2 = stest     @require,
+                        table3 = geneNames @require,
+                        table4 = geneDescr @require,
+                        query  = '''
+                                 SELECT G."ids"                      AS "Ensembl",
+                                        A."Gene"                     AS "Gene",
+                                        S."fc'''+group.id+'''"       AS "fc",
+                                        S."meanExpr'''+group.id+'''" AS "meanExpr",
+                                        S."q'''+group.id+'''"        AS "QValue",
+                                        A."DNARegion",
+                                        SUBSTR(D."description", 1, 50) AS "Description",
+                                        CASEWHEN(S."fc'''+group.id+'''" > 0, 1, -1) AS "status"
+                                 FROM   table1 G, table2 S
+                                        LEFT OUTER JOIN table3 AS A ON (G."ids" = A."Ensembl")
+                                        LEFT OUTER JOIN table4 AS D ON (G."ids" = D."ensembl")
+                                 WHERE  (G."ids" = S."ids")
+                                 ORDER  BY ABS("fc") DESC, "QValue"
+                                 ''',
+                        @name  = "degTable_"+ID)
+                        
+  degTables[ID] = degTable
+
+  degReports[ID] = CSV2Latex(tabledata    = degTable,
+                             refs         = degReportRefs,
+                             attach       = false,
+                             caption      = "List of differentially expressed genes between "+
+                                            group.caseG+" and "+group.controlG+', where the $|\log_2$ fold change (fc) $|>'+
+                                            fcLimit+"$ and the minimum mean expression is above "+minExpr+
+                                            ". The highest p-value accepted is "+pLimit+
+                                            ". Multiple hypothesis corrected p-values with a limit of "+
+                                            qLimit+" are shown as QValues.",
+                             columns      = "Ensembl,Gene,fc,QValue,meanExpr,DNARegion,Description",
+                             colFormat    = "llrrrlp{6.0cm}",
+                             countRows    = true,
+                             dropMissing  = false,
+                             listCols     = "",
+                             numberFormat = "fc=#0.0000,QValue=#0.00E00,meanExpr=#0.00",
+                             pageBreak    = true,
+                             section      = "DEGs: "+group.desc,
+                             sectionType  = "section")
+
+  groupExpr = CSVFilter(csv            = deseqExprMatrix.expr,
+                        auxiliary      = degs @require,
+                        includeColumns = group.samples,
+                        includeColumns = "RowName",
+                        colOrder       = true,
+                        @name          = "exprMatrix_"+ID,
+                        @keep          = true)
+  groupExprG = IDConvert(csv              = groupExpr,
+                         conversionTable  = geneNames,
+                         conversionColumn = "Gene",
+                         keyColumn        = "",
+                         unique           = true,
+                         @name            = "exprMatrixG_"+ID,
+                         @keep            = true)
+  heatmap = HeatMapReport(matr           = groupExprG,
+                          caption        = "Heatmap of DEGs between "+group.caseG+" and "+group.controlG+".",
+                          cexCol         = 1.0,
+                          cexRow         = 0.1,
+                          clusterMethod  = "average",
+                          distanceMetric = "pcc",
+                          drawColnames   = true,
+                          drawLegends    = true,
+                          drawRownames   = true,
+                          marginCol      = 3,
+                          marginRow      = 2,
+                          plotHeight     = 13,
+                          plotWidth      = 11,
+                          scale          = "row",
+                          sectionTitle   = "Sample clusters",
+                          sectionType    = "subsection",
+                          symKey         = true,
+                          width          = 16,
+                          @enabled       = useFunct,
+                          @name          = "heatmap_"+ID)
+  goHeatmapA = CSVFilter(csv            = geneGOA,
+                         auxiliary      = groupExpr @require,
+                         @enabled       = useFunct,
+                         @name          = "heatmapGOA_"+ID,
+                         @keep          = true)
+
+  goTreeCuts = record(
+     iAMPvsPC = 0.3,
+     iAMPvsER = 0.3,
+     ERvsPC = 0.3
+  )
+
+  if (std.exists(goTreeCuts, key=ID)) {
+     cutLimit = goTreeCuts[ID]
+  } else {
+     cutLimit = 0.3
+  }
+  goHeatmap = GOClustering(goAnnotations    = goHeatmapA,
+                           expr             = groupExpr       @require,
+                           similarityTable  = similarityTable @require,
+                           asBitmap         = true,
+                           cutLimit         = cutLimit,
+                           dropUnknown      = true,
+                           geneColumn       = "Gene",
+                           grayScale        = false,
+                           heatmapScale     = "row",
+                           organism         = Organism_Homo_sapiens,
+                           pvalues          = false,
+                           showClusterNames = true,
+                           title            = "GO clustering",
+                           @name            = "heatmapGO_"+ID)
+  degReports[ID+"hm"  ] = heatmap.report
+  degReports[ID+"gohm"] = goHeatmap.report
+}
+
+degViews = LatexCombiner(array        = degReports,
+                         pagebreak    = true,
+                         tail         = '\newpage{}',
+                         sectionTitle = "Differentially expressed genes")
+
+degTablesExcel = CSV2Excel(array         = degTables,
+                           refs          = degReportRefs,
+                           frozenColumns = 2,
+                           frozenRows    = 1,
+                           missingValue  = '')
+
+
+
+// -------------------- //
+//  FUNCTIONAL ANALYSIS //
+// -------------------- //
+
+/**
+ Prepares a document describing the biological properties of the given set
+ of differentially expressed genes and the relationships between them.
+ */
+function FunctionalAnalysis(IDList        genes,
+                            ActivityTable status,
+                            string        title,
+                            record        latexList) ->
+                           (/* All outputs are appended to latexList */) {
+    md = std.metadata()
+    candiRep = CandidateReport(candidates        = genes,
+                               status            = status,
+                               moksiskaan        = moksiskaanInit.connection,
+                               ensembl           = ensembl,
+                               enrichmentTable   = enrichmentTable,
+                               organism          = Organism_Homo_sapiens,
+                               name              = title,
+                               linkTypes         = std.concat(sep=",",
+                                                     //LinkType_pathway_precedence,
+                                                     //LinkType_protein_protein_interaction,
+                                                     LinkType_chemical_reaction,
+                                                     LinkType_protein_activation,
+                                                     LinkType_protein_inhibition,
+                                                     LinkType_protein_state_change,
+                                                     LinkType_protein_binding,
+                                                     LinkType_protein_dissociation,
+                                                     LinkType_gene_expression,
+                                                     LinkType_gene_repression,
+                                                     LinkType_phosphorylation,
+                                                     LinkType_dephosphorylation,
+                                                     LinkType_glycosylation,
+                                                     LinkType_ubiquitination,
+                                                     LinkType_deubiquitination,
+                                                     LinkType_methylation,
+                                                     LinkType_demethylation,
+                                                     LinkType_acetylation,
+                                                     LinkType_deacetylation,
+                                                     LinkType_sumoylation,
+                                                     LinkType_desumoylation
+                                                   ),
+                               annotRules        = "",
+                               bioentityTypes    = BioentityType_gene,
+                               maxGap            = 1,
+                               cytoscape         = false,
+                               useStudies        = "",
+                               hideGaps          = false,
+                               isolateGroupNames = false,
+                               expand            = "connected",
+                               statusFilter      = "NA",
+                               goLimInput        = 0.01,
+                               goLimModel        = -0.01,
+                               showCandidates    = true)
+    latexList[md.instanceName+"_candidates"] = candiRep.report
+    functRep = CandidateReport(candidates        = genes,
+                               status            = status,
+                               moksiskaan        = moksiskaanInit.connection,
+                               ensembl           = ensembl,
+                               enrichmentTable   = enrichmentTable,
+                               organism          = Organism_Homo_sapiens,
+                               name              = title+" (biological function)",
+                               linkTypes         = std.concat(sep=",",
+                                                     LinkType_positive_regulation,
+                                                     LinkType_negative_regulation
+                                                   ),
+                               annotRules        = "",
+                               bioentityTypes    = std.concat(sep=",",
+                                                     BioentityType_gene,
+                                                     BioentityType_molecular_function,
+                                                     BioentityType_biological_process
+                                                   ),
+                               maxGap            = 1,
+                               cytoscape         = false,
+                               useStudies        = "",
+                               isolateGroupNames = true,
+                               expand            = "down",
+                               statusFilter      = "",
+                               goLimInput        = -0.01,
+                               goLimModel        = -0.01,
+                               showCandidates    = false)
+
+    secTitle = "Selected GO gategories"
+    for name, group : goGroups {
+
+       goGroupGenes = GOSearch(bioAnnotation = geneGO,
+                           go            = go,
+                           goColumn      = "GO",
+                           numMatches    = 1,
+                           parentFilter  = true,
+                           terms         = group.terms,
+                           @enabled      = useFunct,
+                           @name         = "goGenes_"+name)
+       group['genes'] = goGroupGenes.hits
+
+       goGroupSelect = TableQuery(table1 = candiRep.bioAnnotation @require,
+                                  table2 = group.genes            @require,
+                                  table3 = status                 @require,
+                                  query  = """\
+                                           SELECT G."entry"     AS "Ensembl",
+                                                  A.".GeneName" AS "Gene",
+                                                  A.".GeneDesc" AS "Description",
+                                                  GROUP_CONCAT(DISTINCT G."GO"   ORDER BY G."GO" SEPARATOR ',' ) AS "GO",
+                                                  GROUP_CONCAT(DISTINCT G."desc" ORDER BY G."GO" SEPARATOR '; ') AS "name",
+                                                  S."status"
+                                           FROM   table1 A, table2 G, table3 S
+                                           WHERE  (G."entry" = A.".GeneId") AND
+                                                  (G."entry" = S."Ensembl")
+                                           GROUP  BY G."entry", A.".GeneName", A.".GeneDesc", S."status"
+                                           ORDER  BY "Gene"
+                                           """,
+                                  @name  = "goGroupSelect_"+name)
+       goGroupTable = CSV2Latex(tabledata    = goGroupSelect,
+                                refs         = goGroupTableRefs,
+                                caption      = "Genes associated with "+group.title+" related Gene Ontology terms ("+
+                                               std.strReplace(group.terms,',',', ')+").",
+                                columns      = "status,Gene,Description,GO,name",
+                                colFormat    = "llp{8cm}p{1cm}p{6cm}",
+                                countRows    = true,
+                                dropMissing  = false,
+                                listCols     = "GO",
+                                section      = secTitle,
+                                @name        = "goGroupTable_"+name)
+       secTitle = ""
+       latexList[md.instanceName+"_"+name] = goGroupTable.report
+    }
+    latexList[md.instanceName+"_function"] = functRep.report
+    return record()
+}
+
+
+// Interesting GO topics for additional tables in the report of functional analysis
+goGroups = record(
+  apoptosis = record(
+    title = "apoptosis",
+    terms = std.concat(sep=",",
+               "GO:0006915"  // apoptotic process
+            )
+  ),
+  cellcycle = record(
+    title = "cell cycle",
+    terms = std.concat(sep=",",
+               "GO:0007049"  // cell cycle
+            )
+  ),
+  complement = record(
+    title = "complement system",
+    terms = std.concat(sep=",",
+               "GO:0001848", // complement binding
+               "GO:0002430", // complement receptor mediated signaling pathway
+               "GO:0006956", // complement activation
+               "GO:0097278"  // complement-dependent cytotoxicity
+            )
+  ),
+  hypoxia = record(
+    title = "hypoxia",
+    terms = std.concat(sep=",",
+               "GO:0036293"  // response to decreased oxygen levels
+            )
+  ),
+  inflammation = record(
+    title = "inflammation",
+    terms = std.concat(sep=",",
+               "GO:0006954"  // inflammatory response
+            )
+  ),
+  stimulation = record(
+    title = "stimulation",
+    terms = std.concat(sep=",",
+               "GO:0031295"  // T cell costimulation
+            )
+  )
+)
+
+if (useFunct) {
+	funcReps  = record()
+	for ID, group : groups {
+  		std.echo("***** Functional analysis for", ID, "comparison.")
+
+		degTable = degTables[ID]
+		stest = gstats[ID]
+ 		statusTable = TableQuery(table1   = degTable @require,
+                           table2   = stest    @require,
+                           query    = '''
+                                      SELECT "Ensembl", "status" FROM table1
+                                      UNION
+                                      SELECT "ids" AS "Ensembl", -2 AS "status"
+                                      FROM   table2
+                                      WHERE  ("meanExpr'''+group.id+'''" < 0.02)
+                                      ''',
+                           @enabled = useFunct,
+                           @name    = "statusTable_"+ID)
+
+		degs  = degLst[ID]
+     	geneFunction = FunctionalAnalysis(force genes  = degs,
+                                       force status = statusTable,
+                                       title        = group.caseG+" versus "+group.controlG,
+                                       latexList    = funcReps,
+                                       @name        = "geneFunction_"+ID)
+  	}
+
+	functioLatex = LatexCombiner(array = funcReps)
+	functioReport = LatexPDF(document = functioLatex,
+                         header   = docTemplate.header,
+                         footer   = docTemplate.footer,
+                         useRefs  = true,
+                         verbose  = false)
+}
+
+// --------------------------------
+// Experimental setup
+// --------------------------------
+expSetup1   = ExperimentSetup(force groups = sampleGroups,
+                              definWidth   = 10.0,
+                              descWidth    = 6.0,
+                              sectionType  = "subsection",
+                              sectionTitle = "Sample groups")
+expSetup2   = ExperimentSetup(force groups = comparisons,
+                              definWidth   = 7.0,
+                              descWidth    = 9.0,
+                              sectionType  = "subsection",
+                              sectionTitle = "Comparisons between sample groups")
+expSetupGV1 = GraphVisualizer(expSetup1.graph,
+                              reportHeight = 26,
+                              reportWidth  = 18,
+                              layout       = "spring2",
+                              latexTail    = '\newpage{}')
+expSetupGV2 = GraphVisualizer(expSetup2.graph,
+                              reportHeight = 26,
+                              reportWidth  = 18,
+                              layout       = "spring2",
+                              latexTail    = '\newpage{}')
+
+expReport = LatexCombiner(expSetup1.report,
+  						  expSetup2.report,
+  						  expSetupGV1.figure,
+  						  expSetupGV2.figure,
+                          sectionTitle = "Experimental setup",
+                          sectionType  = "section",
+                          pagebreak    = true)
+
+
+// --------------------------------
+// final report
+// --------------------------------
+
+propertiesDoc = Properties2Latex(moksiskaanInit.connection,
+                                 ensembl,
+                                 section     = "System configurations",
+                                 sectionType = "section",
+                                 hide        = "database.password")
+
+
+latexCombined = LatexCombiner(array={
+  expReport,
+  exprQCRaw,
+  degViews,
+  propertiesDoc,
+  rConfig.report},
+  @keep = false
+)
+
+qcReport = LatexPDF(document = latexCombined,
+                    header   = docTemplate.header,
+                    footer   = docTemplate.footer,
+                    useRefs  = true,
+                    verbose  = false)
+
+OUTPUT(qcReport.document)
