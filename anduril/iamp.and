@@ -310,6 +310,7 @@ geneNames = CSVCleaner(original   = gMoksisA.bioAnnotation,
 gstats  = record(genes=geneNames)
 groups  = record()
 degLst  = record()
+pgeReports = record()
 eCSSRow = ""
 for comparison : std.itercsv(comparisons) {
   gCase    = null
@@ -466,7 +467,19 @@ for comparison : std.itercsv(comparisons) {
                                 """,
                        @name  = "degs_"+gLab)
   degLst[gLab] = degCall.table
-
+  
+  @out.document.filename = "document.tex"
+  pge = PGE
+  (
+  	query=degCall.table, 
+  	reference=gtf, 
+  	sectionTitle="Positional enrichment of DEGs "+gLab,
+  	maxRegionsPerChr=30,
+  	cmdPrefix="docker run -w ${metadata_componentPath} --volumes-from anduril-moksiskaan cfrech/anduril-pge /root/init.sh",
+  	@name="pge_"+gLab
+  )
+  pgeReports[gLab] = pge.document
+  
   // make 'CD19+' match in following regular expression 
   gControlEscaped = std.strReplace(gControl,"\\+","\\\\+")
     
@@ -479,8 +492,6 @@ for comparison : std.itercsv(comparisons) {
   groups[gLab].samples = samples.ids
 }
 
-@out.document.filename = "document.tex"
-pge = PGE(query=degs_iAMPvsER.table, reference=gtf, cmdPrefix="docker run --rm=true -w ${metadata_componentPath} --volumes-from anduril-moksiskaan cfrech/anduril-pge /root/init.sh")
  
 
 degSets = CSV2SetList(tables=degLst)
@@ -716,7 +727,7 @@ boxplotSelectedGenes = REvaluate(var1   = deseqExprMatrix.expr    @require @doc=
                         param2 = "ETV6,RUNX1,CRLF2,P2RY8,EBF1,PAX5,VPREB1,HMGN1,MME,CD34,CD19,MS4A1",
                         script = boxplotscript)
 degReports["selectedGenes"] = LatexCombiner(latex1=boxplotSelectedGenes.document, pagebreak=true, sectionTitle="Expression of selected genes", sectionType="section")
-degReports["pges"] = LatexCombiner(latex1=pge.document, pagebreak=true, sectionTitle="Positional enrichment of differentially expressed genes", sectionType="section")
+degReports["pges"] = LatexCombiner(array=pgeReports, pagebreak=true, sectionTitle="Positional enrichment of differentially expressed genes", sectionType="section")
 
 degViews = LatexCombiner(array        = degReports,
                          pagebreak    = true,
