@@ -1,36 +1,9 @@
-host = ""
-docker = "docker run --rm=true -v /mnt/biowaste/data2:/mnt/biowaste/data2 -u anduril cfrech/anduril-worker " 
+inputBamDir = INPUT(path="/mnt/synology/data/christian/iamp/data/current/bam/", recursive=false)
+inputBamFiles = Folder2Array(folder1 = inputBamDir, filePattern = "C57C3ACXX_CV_([^_]+)_.*[.]bam$")
+//inputBamFiles = Folder2Array(folder1 = inputBamDir, filePattern = "(.*).bam$")
 
-//-----------------------------------
-// FUNCTIONS
-//-----------------------------------
-
-// count reads per BAM using SAMtools
-function ReadCounts(Array<BinaryFile> bamFiles) -> (CSV counts) {
-	count = {}
-	for bam : std.iterArray(bamFiles) {
-		bamInput = INPUT(path=bam.file, @name = bam.key + "_bamInput")
-		countTotal =  BashEvaluate(var1 = bamInput, script='n=$(samtools view -c @var1@)        && echo -e "sample\ttotal\n'+bam.key+'\t$n"  > @optOut1@', @name = bam.key + "_countTotal", @host=host)
-		countPF =     BashEvaluate(var1 = bamInput, script='n=$(samtools view -c -F 512 @var1@) && echo -e "sample\tPF\n'+bam.key+'\t$n"     > @optOut1@', @name = bam.key + "_countPF", @host=host)
-		countMapped = BashEvaluate(var1 = bamInput, script='n=$(samtools view -c -F 772 @var1@) && echo -e "sample\tmapped\n'+bam.key+'\t$n" > @optOut1@', @name = bam.key + "_countMapped", @host=host)
-		count[bam.key] = CSVJoin(array={countTotal.optOut1, countPF.optOut1, countMapped.optOut1})
-	}
-	return CSVListJoin(files=count, fileCol="")	
+out = {}
+for f : std.iterArray(inputBamFiles) {
+        out[f.key] = BashEvaluate(var1 = INPUT(path=f.file), script = "echo @var1@")
 }
 
-std.echo("Starting workflow...")
-
-// /** Set up Moksiskaan environment */
-// moksiskaanInit = MoksiskaanInit(showLog='EnsemblImport,PathwayCommonsImport,PINAImport,WikiPathways')
-
-bamDir = "/mnt/biowaste/data2/christian.frech/iamp/results/current/gsnap"
-
-// read BAM file names
-//-----
-seqIn = INPUT(path=bamDir, recursive=false)
-seqInArray = Folder2Array(folder1 = seqIn, filePattern = "C57C3ACXX_CV_([^_]+)_.*[.]bam$")
-
-// output global read counts
-//--------------------------
-readCounts = ReadCounts(bamFiles=seqInArray.array)
-OUTPUT(readCounts)
