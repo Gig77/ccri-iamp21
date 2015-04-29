@@ -1,3 +1,6 @@
+include "qc.and"
+include "pgeReport.and"
+
 // --------------- //
 //  CONFIGURATION  //
 // --------------- //
@@ -149,7 +152,6 @@ deseqExprMatrix = DESeqExpr
 
 //--- QUALITY CONTROL ---------------------------------------------------//
 
-include "qc.and"
 qcReport  = getQCReport
 (
 	alignedBAMs = alignedBAMs.array,
@@ -456,7 +458,7 @@ for comparison : std.itercsv(comparisons) {
 
   degCall = TableQuery(table1 = gstats[gLab] @require,
                        query  = """\
-                                SELECT DISTINCT "ids"
+                                SELECT DISTINCT "ids", "fc"""+gLab+"""" AS "fc", "p"""+gLab+"""" AS "p", "q"""+gLab+"""" AS "q" 
                                 FROM   table1
                                 WHERE  (ABS("fc"""+gLab+'''")  >= '''+fcLimitInclude+""") AND
                                        ("p"""+gLab+'''"        <= '''+pLimitInclude +""") AND
@@ -467,18 +469,14 @@ for comparison : std.itercsv(comparisons) {
                                 """,
                        @name  = "degs_"+gLab)
   degLst[gLab] = degCall.table
-  
-  @out.document.filename = "document.tex"
-  pge = PGE
+
+  pgeReports[gLab] = PGEReport
   (
   	query=degCall.table, 
   	reference=gtf, 
-  	sectionTitle="Positional enrichment of DEGs "+gLab,
-  	maxRegionsPerChr=30,
-  	cmdPrefix="docker run -w ${metadata_componentPath} --volumes-from anduril-moksiskaan cfrech/anduril-pge /root/init.sh",
+  	title=gLab,
   	@name="pge_"+gLab
   )
-  pgeReports[gLab] = pge.document
   
   // make 'CD19+' match in following regular expression 
   gControlEscaped = std.strReplace(gControl,"\\+","\\\\+")
