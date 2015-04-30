@@ -1,0 +1,214 @@
+// Prepares a document describing the biological properties of the given set
+// of differentially expressed genes and the relationships between them.
+
+// Interesting GO topics for additional tables in the report of functional analysis
+goGroups = record
+(
+	apoptosis = record(title = "apoptosis", terms = std.concat(sep=",","GO:0006915")),  // apoptotic process 
+	cellcycle = record(title = "cell cycle", terms = std.concat(sep=",", "GO:0007049")),  // cell cycle
+	complement = record(title = "complement system", terms = std.concat
+		(sep=",", 
+			"GO:0001848", // complement binding
+            "GO:0002430", // complement receptor mediated signaling pathway
+            "GO:0006956", // complement activation
+            "GO:0097278"  // complement-dependent cytotoxicity
+        )),
+	hypoxia = record(title = "hypoxia", terms = std.concat(sep=",", "GO:0036293")),  // response to decreased oxygen levels
+	inflammation = record(title = "inflammation", terms = std.concat(sep=",", "GO:0006954")),  // inflammatory response
+	stimulation = record(title = "stimulation", terms = std.concat(sep=",", "GO:0031295"))  // T cell costimulation
+)
+
+goGroupTableRefs = XrefLinkRule
+(
+	moksiskaan = moksiskaanInit.connection,
+	columns    = "GO=GO,Ensembl=Gene",
+	xrefTypes  = XrefType_Gene_Ontology+","+XrefType_Ensembl_gene,
+	@enabled   = useFunct
+)
+
+function FunctionalAnalysis(IDList        genes,
+                            ActivityTable status,
+                            string        title,
+                            record        latexList) ->
+                           (/* All outputs are appended to latexList */) {
+    md = std.metadata()
+    candiRep = CandidateReport(candidates        = genes,
+                               status            = status,
+                               moksiskaan        = moksiskaanInit.connection,
+                               ensembl           = ensembl,
+                               enrichmentTable   = enrichmentTable,
+                               organism          = Organism_Homo_sapiens,
+                               name              = title,
+                               linkTypes         = std.concat(sep=",",
+                                                     //LinkType_pathway_precedence,
+                                                     //LinkType_protein_protein_interaction,
+                                                     LinkType_chemical_reaction,
+                                                     LinkType_protein_activation,
+                                                     LinkType_protein_inhibition,
+                                                     LinkType_protein_state_change,
+                                                     LinkType_protein_binding,
+                                                     LinkType_protein_dissociation,
+                                                     LinkType_gene_expression,
+                                                     LinkType_gene_repression,
+                                                     LinkType_phosphorylation,
+                                                     LinkType_dephosphorylation,
+                                                     LinkType_glycosylation,
+                                                     LinkType_ubiquitination,
+                                                     LinkType_deubiquitination,
+                                                     LinkType_methylation,
+                                                     LinkType_demethylation,
+                                                     LinkType_acetylation,
+                                                     LinkType_deacetylation,
+                                                     LinkType_sumoylation,
+                                                     LinkType_desumoylation
+                                                   ),
+                               annotRules        = "",
+                               bioentityTypes    = BioentityType_gene,
+                               maxGap            = 1,
+                               cytoscape         = false,
+                               useStudies        = "",
+                               hideGaps          = false,
+                               isolateGroupNames = false,
+                               expand            = "connected",
+                               statusFilter      = "NA",
+                               goLimInput        = 0.01,
+                               goLimModel        = -0.01,
+                               showCandidates    = true)
+    latexList[md.instanceName+"_candidates"] = candiRep.report
+    functRep = CandidateReport(candidates        = genes,
+                               status            = status,
+                               moksiskaan        = moksiskaanInit.connection,
+                               ensembl           = ensembl,
+                               enrichmentTable   = enrichmentTable,
+                               organism          = Organism_Homo_sapiens,
+                               name              = title+" (biological function)",
+                               linkTypes         = std.concat(sep=",",
+                                                     LinkType_positive_regulation,
+                                                     LinkType_negative_regulation
+                                                   ),
+                               annotRules        = "",
+                               bioentityTypes    = std.concat(sep=",",
+                                                     BioentityType_gene,
+                                                     BioentityType_molecular_function,
+                                                     BioentityType_biological_process
+                                                   ),
+                               maxGap            = 1,
+                               cytoscape         = false,
+                               useStudies        = "",
+                               isolateGroupNames = true,
+                               expand            = "down",
+                               statusFilter      = "",
+                               goLimInput        = -0.01,
+                               goLimModel        = -0.01,
+                               showCandidates    = false)
+
+    secTitle = "Selected GO gategories"
+    for name, group : goGroups {
+
+       goGroupGenes = GOSearch(bioAnnotation = geneGO,
+                           go            = go,
+                           goColumn      = "GO",
+                           numMatches    = 1,
+                           parentFilter  = true,
+                           terms         = group.terms,
+                           @enabled      = useFunct,
+                           @name         = "goGenes_"+name)
+       group['genes'] = goGroupGenes.hits
+
+       goGroupSelect = TableQuery(table1 = candiRep.bioAnnotation @require,
+                                  table2 = group.genes            @require,
+                                  table3 = status                 @require,
+                                  query  = """\
+                                           SELECT G."entry"     AS "Ensembl",
+                                                  A.".GeneName" AS "Gene",
+                                                  A.".GeneDesc" AS "Description",
+                                                  GROUP_CONCAT(DISTINCT G."GO"   ORDER BY G."GO" SEPARATOR ',' ) AS "GO",
+                                                  GROUP_CONCAT(DISTINCT G."desc" ORDER BY G."GO" SEPARATOR '; ') AS "name",
+                                                  S."status"
+                                           FROM   table1 A, table2 G, table3 S
+                                           WHERE  (G."entry" = A.".GeneId") AND
+                                                  (G."entry" = S."Ensembl")
+                                           GROUP  BY G."entry", A.".GeneName", A.".GeneDesc", S."status"
+                                           ORDER  BY "Gene"
+                                           """,
+                                  @name  = "goGroupSelect_"+name)
+       goGroupTable = CSV2Latex(tabledata    = goGroupSelect,
+                                refs         = goGroupTableRefs,
+                                caption      = "Genes associated with "+group.title+" related Gene Ontology terms ("+
+                                               std.strReplace(group.terms,',',', ')+").",
+                                columns      = "status,Gene,Description,GO,name",
+                                colFormat    = "llp{8cm}p{1cm}p{6cm}",
+                                countRows    = true,
+                                dropMissing  = false,
+                                listCols     = "GO",
+                                section      = secTitle,
+                                @name        = "goGroupTable_"+name)
+       secTitle = ""
+       latexList[md.instanceName+"_"+name] = goGroupTable.report
+    }
+    latexList[md.instanceName+"_function"] = functRep.report
+    return record()
+}
+
+function createFunctionalAnalysisReport
+(
+	record groups,
+	record degTables,
+	record gstats,
+	record degLst
+) -> () 
+{
+	funcReps  = record()
+	for ID, group : groups {
+  		std.echo("***** Functional analysis for", ID, "comparison.")
+
+		degTable = degTables[ID]
+		stest = gstats[ID]
+		
+ 		statusTable = TableQuery
+ 		(
+ 			table1   = degTable @require,
+            table2   = stest    @require,
+            query    = '''
+				SELECT "Ensembl", "status" FROM table1
+                UNION
+                SELECT "ids" AS "Ensembl", -2 AS "status"
+                FROM   table2
+                WHERE  ("meanExpr'''+group.id+'''" < 0.02)
+            ''',
+            @enabled = useFunct,
+            @name    = "statusTable_"+ID
+		)
+
+		degs  = degLst[ID]
+     	geneFunction = FunctionalAnalysis
+     	(
+     		force genes  = degs,
+            force status = statusTable,
+            title        = group.caseG+" versus "+group.controlG,
+            latexList    = funcReps,
+            @name        = "geneFunction_"+ID
+		)
+	}
+
+	funcReps["properties"] = Properties2Latex
+	(
+		moksiskaanInit.connection,
+		ensembl,
+		section     = "System configurations",
+		sectionType = "section",
+		hide        = "database.password"
+	)
+
+	functioLatex = LatexCombiner(array = funcReps)
+	functioReport = LatexPDF
+	(
+		document = functioLatex,
+		header   = docTemplate.header,
+		footer   = docTemplate.footer,
+		useRefs  = true,
+		verbose  = false
+	)
+	
+	return record()
+}

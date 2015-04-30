@@ -1,0 +1,54 @@
+geneGO = INPUT(path="/opt/moksiskaan/pipeline/exec/output/geneGO_9606.csv")  /** Gene Ontology annotations of all genes */
+similarityTable = INPUT(path="/opt/moksiskaan/pipeline/exec/output/GOSimilarity_9606.csv") // Moksiskaan specific similarities for the Gene ontology terms
+
+goTreeCuts = record
+(
+	iAMPvsPC = 0.3,
+	iAMPvsER = 0.3,
+	ERvsPC = 0.3
+)
+
+function getGOClusteringReport
+(
+	Matrix exprMatrix,
+	CSV    geneNames,
+	string ID
+) -> (Latex report) 
+{
+	goAnnotations = TableQuery
+	(
+		table1 = geneGO    @require,
+		table2 = geneNames @require,
+		table3 = exprMatrix @require,
+		query  = """
+					SELECT O.*, A."Gene"
+					FROM   table1 O, table2 A, table3 E
+					WHERE  O."xref10" = A."Ensembl" and O."xref10" = E."RowName"
+				 """
+	)
+
+	if (std.exists(goTreeCuts, key=ID)) {
+		cutLimit = goTreeCuts[ID]
+	} else {
+		cutLimit = 0.3
+	}
+
+	goHeatmap = GOClustering
+	(
+		force goAnnotations    = goAnnotations,
+		expr             = exprMatrix       @require,
+		similarityTable  = similarityTable @require,
+		asBitmap         = true,
+		cutLimit         = cutLimit,
+		dropUnknown      = true,
+		geneColumn       = "Gene",
+		grayScale        = false,
+		heatmapScale     = "row",
+		organism         = Organism_Homo_sapiens,
+		pvalues          = false,
+		showClusterNames = true,
+		title            = "GO clustering"
+	)
+	
+	return goHeatmap.report
+}

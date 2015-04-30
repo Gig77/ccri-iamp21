@@ -1,0 +1,40 @@
+function getHeatmapReport
+(
+  	Matrix exprMatrix,
+  	CSV geneNames,
+	record group
+) -> (Latex report)
+{
+	groupExprG = IDConvert
+	(
+		csv              = exprMatrix,
+		conversionTable  = geneNames,
+		conversionColumn = "Gene",
+		keyColumn        = "",
+		unique           = true
+	)
+	
+	heatmap = HeatMapReport
+	(
+		matr           = groupExprG,
+		caption        = "Heatmap of DEGs between "+group.caseG+" and "+group.controlG+".",
+		cexCol         = 1.0,
+		cexRow         = 0.1,
+		clusterMethod  = "average",
+		distanceMetric = "pcc",
+		drawColnames   = true,
+		drawLegends    = true,
+		drawRownames   = true,
+		marginCol      = 3,
+		marginRow      = 2,
+		plotHeight     = 13,
+		plotWidth      = 11,
+		scale          = "row",
+		sectionTitle   = "Heatmap of genes differentially expressed between "+group.caseG+" and "+group.controlG,
+		sectionType    = "subsection",
+		symKey         = true,
+		width          = 16
+	)
+
+	return heatmap.report
+}	

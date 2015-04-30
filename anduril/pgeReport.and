@@ -2,7 +2,9 @@ function PGEReport
 (
   	CSV	   query,
   	GTF	   reference,
-  	string title
+  	string title,
+  	float  pvalue,
+  	boolean includeHeader
 ) -> (Latex report) 
 {
 	@out.document.filename = "document.tex"
@@ -10,8 +12,13 @@ function PGEReport
 	(
 		query=query, 
 		reference=reference, 
-		sectionTitle="PGE ideogram: "+title,
-		maxRegionsPerChr=20,
+		pvalue=pvalue,
+		maxRegionsPerChr=25,
+		sectionTitle="PGE: "+title,
+		caption="Ideogram showing the genomic location of differentially expressed genes (DEG; comparing "+title+") and enriched chromosomal regions. DEGs are indicated above " +
+		        "chromosomes with red tick marks. If found, significantly enriched chromosomal regions (p-value below "+pvalue+") are shown as blue segments below chromosomes. Segment color intensity " +
+		        "reflects statistical significance, from most significant (dark blue) to least significant (light blue). Enriched " +
+		        "regions may overlap in which case segments are drawn on top of each other.",
 		cmdPrefix="docker run -w ${metadata_componentPath} --volumes-from anduril-moksiskaan cfrech/anduril-pge /root/init.sh"
 	)
 	
@@ -36,22 +43,28 @@ function PGEReport
 	enrichedRegions = CSV2Latex
 	(
 		tabledata	 = annotated,
-        caption      = "List of significantly enriched regions comparing "+title+". Differentially expressed genes (DEGs) found in those "+
+        caption      = "List of significantly enriched regions comparing "+title+". Differentially expressed genes (DEGs) found in enriched "+
                        "regions are shown in the last column, whereas up-regulated genes are shown in \\textcolor{red}{red} and " +
-                       "down-regulated genes are shown in \\textcolor{blue}{blue}. Regions sorted by p-value with more significant " +
-                       "regions shown at the top.",
+                       "down-regulated genes are shown in \\textcolor{blue}{blue}. Regions sorted by p-value (most to least significant).",
 //      columns      = "chr,start,end,pvalue,pvalueadj,common,size",
 		rename       = "HGNC=DEGs in region",
 //      listCols     = "Genes",
 		colFormat    = "crrrrccp{9.0cm}",
         numberFormat = "pvalue=#0.0E00,pvalueadj=#0.0E00,HGNC=RAW_LATEX",
         countRows    = true,
-        skipEmpty    = true,
-        sectionType  = "subsection",
-        section      = "PGE regions: "+title
+        skipEmpty    = true
     )
-    
-    pgeReport = LatexCombiner(latex1=pge.document, latex2=enrichedRegions.report, pagebreak=true)
+
+	header = ""
+	if (includeHeader) {
+		header = """In this analysis, genes found to be differentially expressed between groups are tested for positional enrichment
+	                across the genome using a hypergeometric test. Significantly enriched regions may provide insights into underlying gene copy number changes (gene dosage effect) 
+	                or into neighboring genes that are co-regulated due to shared cis-regulatory motifs or epigenetic states (e.g. open chromatin regions).
+	                The method used in this analysis, including statistical testing and filtering of overlapping regions, is described in De Preter et al. (2008).
+	                """
+	}
+	std.length(pgeReports)  
+    pgeReport = LatexCombiner(head=header, latex1=pge.document, latex2=enrichedRegions.report, pagebreak=true)
 	
 	return pgeReport
 }
