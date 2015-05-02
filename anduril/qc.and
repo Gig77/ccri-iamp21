@@ -3,12 +3,15 @@
 // ----------------- //
 
 /** Prepares some quality control plots for the given expression matrix. */
-function getQCReport(Array<BAM>	 alignedBAMs,
-				GTF              gtf,
-				Matrix           expr,
-                SampleGroupTable groups,
-                string           title = "Quality Control") ->
-               (Latex            report) {
+function getQCReport
+(
+	Array<BAM>	 	 alignedBAMs,
+	GTF              gtf,
+	Matrix           expr,
+	SampleGroupTable groups,
+	string           title = "Quality Control"
+) -> (Latex report)
+{
 
 	readStats = RNASeqReadStats(reads=alignedBAMs, gtf=gtf)
 	readStatsChart = RNASeqReadStatsBarChart(stats=readStats.counts)

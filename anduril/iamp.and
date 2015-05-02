@@ -25,7 +25,6 @@ qLimitExclude   = 0.20
 pLimitExclude   = 0.1
 minExprExclude  = 100.00
 maxNA    = 0.90
-dockerPrefix = "docker run --rm=true -e ANDURIL_HOME=/usr/local/share/anduril -e ANDURIL_BUNDLES=/usr/local/share/anduril-bundles -e ANDURIL_USER_ID=10001 -e ANDURIL_GROUP_ID=10000 --volumes-from anduril-moksiskaan "
 
 inputBamDir = INPUT(path="/mnt/synology/data/christian/iamp/data/current/bam", recursive=false)
 inputBamFiles = Folder2Array(folder1 = inputBamDir, filePattern = "C57C3ACXX_CV_([^_]+)_.*[.]bam$")
@@ -127,9 +126,9 @@ comparisons = SampleGroupCreator(data1        = sampleGroups,
 
 alignedBAMs = GSNAPAlignBams
 (
-	inputBAMs=inputBamFiles, 
-    cmdPrefix=dockerPrefix+"cfrech/anduril-gsnap /home/anduril/init.sh",
-    options="--nthreads 18 --maxsearch=100 --npaths=1 --max-mismatches=1 --novelsplicing=0 --batch=4 --genome-unk-mismatch=0"
+	inputBAMs = inputBamFiles, 
+    options   = "--nthreads 18 --maxsearch=100 --npaths=1 --max-mismatches=1 --novelsplicing=0 --batch=4 --genome-unk-mismatch=0",
+    docker    = "cfrech/anduril-gsnap"
 )
 
 //--- EXPRESSION MATRIX -------------------------------------------------//
@@ -152,24 +151,6 @@ qcReport  = getQCReport
     force expr   = deseqExprMatrix.expr,
     force groups = sampleGroupsSimple
 )
-
-/*
-deseqNorm = REvaluate(var1 = bamCounts @require @doc="Matrix with raw read counts",
-                      script = StringInput(content="""
-									samples <- read.delim(paste0(var1, "/_index"))
-									names(samples) <- c("sampleName", "fileName")
-									library(DESeq2)
-									dds  <- DESeqDataSetFromHTSeqCount(sampleTable = samples, directory="/", design=~1)
-									rld <- rlog(dds)
-						  			table.out <- assay(rld)
-						       """)
-					  )
-
-exprQCNorm  = ExprQC(force expr   = deseqNorm.table,
-                     force groups = sampleGroupsSimple,
-                     title        = "Normalized (rlog) DESeq2 signal")
-*/
-
 
 //--- DIFFERENTIAL GENE EXPRESSION ANALYSIS -----------------------------------------------------//
 
@@ -638,7 +619,10 @@ combinedLatex = LatexCombiner(array={
   qcReport,
   degViews,
   rConfig.report},
-  @keep = false
+  @keep = false,
+  @cpu=4,
+  @memory=1000,
+  @host="biowaste"
 )
 
 combinedPDF = LatexPDF(document = combinedLatex,
