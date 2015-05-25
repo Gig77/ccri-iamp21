@@ -1,51 +1,37 @@
-include "qc.and"
-include "degTable.and"
-include "degBoxPlot.and"
-include "goClustering.and"
-include "expressionHeatmap.and"
-include "pgeReport.and"
-
-// --------------- //
-//  CONFIGURATION  //
-// --------------- //
+//------------------------------------------------------------------------------------------------
+//--- CONSTANTS
+//------------------------------------------------------------------------------------------------
 
 title = "iAMP21 RNA-seq"
 authors = "Christian Frech"
-useFunct = false
-gtf = INPUT(path="/mnt/synology/data/christian/iamp/data/current/Homo_sapiens.GRCh37.75.etv6runx1.gtf.gz")
-ensembl = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/etc/ensemblHomoSapiens.properties") /** JDBC parameters for Ensembl~\cite{Flicek2008} database. */
-go = INPUT(path="/opt/moksiskaan/pipeline/exec/output/goDB-in.obo")  /** Gene Ontology~\cite{Ashburner2000} */
+useFunct = true
+
+PROJECT_BASE="/mnt/projects/iamp"
+inputBamDir = INPUT(path=PROJECT_BASE+"/data/bam", recursive=false)
+inputBamFiles = Folder2Array(folder1 = inputBamDir, filePattern = "C57C3ACXX_CV_([^_]+)_.*[.]bam$")
+sampleAnnotation = INPUT(path=PROJECT_BASE+"/data/qlucore/annotations.txt")
+comparisons = INPUT(path=PROJECT_BASE+"/data/anduril/comparisons.tsv")
+gtf = INPUT(path=PROJECT_BASE+"/data/Homo_sapiens.GRCh37.75.etv6runx1.gtf.gz")
+geneGO = INPUT(path="/opt/moksiskaan/pipeline/exec/output/geneGO_9606.csv")  /** Gene Ontology annotations of all genes */
 enrichmentTable = INPUT(path="/opt/moksiskaan/pipeline/exec/output/GOEnrichment_9606.csv") // Moksiskaan specific a priori probabilities for the Gene ontology terms.
+ensemblDb = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/etc/ensemblHomoSapiens.properties") // JDBC parameters for Ensembl~\cite{Flicek2008} database.
+// mysql --host=ensembldb.ensembl.org --port=5306 --database=homo_sapiens_core_73_37 --user=anonymous -B -A -e "select stable_id as ensembl,description from gene where description is not null;" > /mnt/biowaste/data2/christian.frech/iamp/results/current/anduril/ensembl.homo_sapiens_73_37.geneAnnotations.tsv
+geneAnnot = INPUT(path=PROJECT_BASE+"/data/anduril/ensembl.homo_sapiens_75_37.geneAnnotations.tsv")
+
 fcLimitInclude  = 1.00
 pLimitInclude   = 1e-8
 qLimitInclude   = 1e-4
 minExprInclude  = 100.00
-fcLimitExclude  = 1.00
-qLimitExclude   = 0.20
-pLimitExclude   = 0.1
-minExprExclude  = 100.00
-maxNA    = 0.90
-
-inputBamDir = INPUT(path="/mnt/synology/data/christian/iamp/data/current/bam", recursive=false)
-inputBamFiles = Folder2Array(folder1 = inputBamDir, filePattern = "C57C3ACXX_CV_([^_]+)_.*[.]bam$")
+maxNA    		= 0.90    // fraction of samples allowed to have NA values before gene is discarded
 
 moksiskaanInit = MoksiskaanInit(showLog='EnsemblImport,PathwayCommonsImport,PINAImport,WikiPathways')
+ensemblRef = XrefLinkRule(moksiskaan = moksiskaanInit.connection, columns = "Ensembl=Ensembl", xrefTypes  = XrefType_Ensembl_gene)
 
-rConfig = RConfigurationReport(packages = "base,csbl.go,DESeq2,igraph", sectionType = "subsection")
-bibtexMoksiskaan = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/components/report-BibTeX/moksiskaan.bib")
-bibtexSequencing = INPUT(path="/usr/local/share/anduril-bundles/sequencing/components/report-BibTeX/sequencing.bib")
-docTemplate = LatexTemplate(authors  = std.quote(authors, type="LaTeX"),
-                            bibtex1  = rConfig.citations,
-                            bibtex2  = bibtexMoksiskaan,
-                            bibtex3  = bibtexSequencing,
-                            title    = std.quote(title, type="LaTeX"),
-                            printTOC = true)
+//------------------------------------------------------------------------------------------------
+//--- SETUP SAMPLE GROUPS
+//------------------------------------------------------------------------------------------------
 
-
-//--- SAMPLE SETUP ------------------------------------------------------------------//
-
-annotation = INPUT(path="/mnt/synology/data/christian/iamp/results/current/qlucore/annotations.txt")
-sampleGroups = TableQuery(table1 = annotation @require,
+sampleGroups = TableQuery(table1 = sampleAnnotation @require,
                           query  = """\
 	SELECT * FROM (
 	  SELECT "Subtype"                                     AS "ID",
@@ -101,39 +87,100 @@ sampleGroups = TableQuery(table1 = annotation @require,
                                    """)
 sampleGroupsSimple = CSVFilter(csv=sampleGroups, regexp="ID=iAMP|PC|ER|CD19")
 
-//--- COMPARISONS SETUP ------------------------------------------------------------------//
 
-comparisons = INPUT(path="/mnt/synology/data/christian/iamp/results/current/anduril/comparisons.tsv")
+//------------------------------------------------------------------------------------------------
+//--- SETUP COMPARISON GROUPS
+//------------------------------------------------------------------------------------------------
 
-/*
-comparisons = SampleGroupCreator(data1        = sampleGroups,
-                              pattern1     = "iAMP,PC",
-                              pattern2     = "iAMP,ER",
-                              pattern3     = "ER,PC",
-                              pattern4     = "(iAMP|PC|ER),immature",
-//                              pattern5     = "(iAMP|PC|ER),CD19",
-                              definition1  = "fciAMPvsPC,ratio,iAMP21 vs. P2RY8-CRLF2",
-                              definition2  = "fciAMPvsER,ratio,iAMP21 vs. ETV6-RUNX1",
-                              definition3  = "fcERvsPC,ratio,ETV6-RUNX1 vs. P2RY8-CRLF2",
-                              definition4  = "fc$1vsimmature,ratio,$1 vs. immature",
-//                              definition5  = "fc$1specvsCD19,ratio,$1-specific expression",
-                              patternTypes = "relist,relist,relist,relist",
-                              columns      = "ID")
-*/
+groups = record()
+for comparison : std.itercsv(comparisons) 
+{
+	// fetch group names
+	gCase    = null
+	gControl = null
+	for g : std.split(comparison.Members, ',')
+	{
+		if (gCase    == null) { gCase    = g } else
+		if (gControl == null) { gControl = g } else
+		std.fail("Too many groups listed for ", comparison.ID, " (", comparison.Description, "). Members = ", comparison.Members, sep='')
+	}
+	ID = std.strReplace(comparison.ID, "^fc", "")
+	
+	// fetch sample names
+	// make 'CD19+' match in following regular expression 
+	gControlEscaped = std.strReplace(gControl,"\\+","\\\\+")
+	samples = CSV2IDList
+	(
+		table1    = sampleGroups @require,
+		columnIn  = "Members",
+		columnOut = ".GeneId",
+		isList    = true,
+		regexp1   = "ID=("+gCase+"|"+gControlEscaped+")",
+		@name     = "samples_"+ID
+	)
 
+	// add group record	
+	groups[ID] = 
+	{
+		'caseG'    = gCase,
+		'controlG' = gControl,
+		'samples'  = samples.ids,
+		'desc'     = comparison.Description
+	}
+}
 
-//--- ALIGNMENT ---------------------------------------------------------//
+//------------------------------------------------------------------------------------------------
+//--- EXPERIMENTAL SETUP REPORT
+//------------------------------------------------------------------------------------------------
 
-alignedBAMs = GSNAPAlignBams
+include "experimentalSetup.and"
+
+experimentReport = experimentalSetupReport
 (
-	inputBAMs = inputBamFiles, 
-    options   = "--nthreads 18 --maxsearch=100 --npaths=1 --max-mismatches=1 --novelsplicing=0 --batch=4 --genome-unk-mismatch=0",
-    docker    = "cfrech/anduril-gsnap"
+	sampleGroups = sampleGroups,
+	comparisons  = comparisons
 )
 
-//--- EXPRESSION MATRIX -------------------------------------------------//
+//------------------------------------------------------------------------------------------------
+//--- ALIGNMENT
+//------------------------------------------------------------------------------------------------
 
-bamCounts = HTSeq(alignments = alignedBAMs, annotationGTF = gtf, options = "-t exon -s no")
+alignedBams = record()
+for bam : std.iterArray(inputBamFiles) 
+{
+	@out.alignment.filename = bam.key+'.gsnap.sorted.dupmarked.bam'
+	gsnap = GSNAP
+	(
+		reads    = INPUT(path=bam.file), 
+		options  = "--nthreads 10 --maxsearch=100 --npaths=1 --max-mismatches=1 --novelsplicing=0 --batch=4 --genome-unk-mismatch=0",
+		docker   = "biowaste:5000/anduril/gsnap",
+		@cpu     = 10, 
+		@memory  = 40000,
+		@name    = "gsnap_"+bam.key 
+	)
+	alignedBams[bam.key] = gsnap.alignment
+}
+
+//------------------------------------------------------------------------------------------------
+//--- EXPRESSION MATRIX
+//------------------------------------------------------------------------------------------------
+
+//bamCounts = HTSeq(alignments = alignedBAMs, annotationGTF = gtf, options = "-t exon -s no")
+bamCounts  = {}
+for sample, bam : alignedBams 
+{
+	sName = std.quote(sample, type="Anduril")
+	@out.optOut1.filename = sName+'.htseq.counts'
+	count = BashEvaluate
+	(
+		var1 = bam,
+		var2 = gtf,
+		script = "htseq-count -f bam -t exon -s no @var1@ @var2@ | grep -v '^__' > @optOut1@",
+		@name = "htseq_"+sName
+	)
+	bamCounts[sample] = count.optOut1
+}
+
 deseqExprMatrix = DESeqExpr
 (
 	geneCounts  = bamCounts,
@@ -142,255 +189,70 @@ deseqExprMatrix = DESeqExpr
     normalized  = true
 )
 
-//--- QUALITY CONTROL ---------------------------------------------------//
+//------------------------------------------------------------------------------------------------
+//--- QUALITY CONTROL
+//------------------------------------------------------------------------------------------------
+
+include "qc.and"
 
 qcReport  = getQCReport
 (
-	alignedBAMs = alignedBAMs.array,
+	alignedBAMs = alignedBams,
     gtf = gtf,
     force expr   = deseqExprMatrix.expr,
     force groups = sampleGroupsSimple
 )
 
-//--- DIFFERENTIAL GENE EXPRESSION ANALYSIS -----------------------------------------------------//
+//------------------------------------------------------------------------------------------------
+//--- DIFFERENTIAL GENE EXPRESSION ANALYSIS
+//------------------------------------------------------------------------------------------------
 
-// mysql --host=ensembldb.ensembl.org --port=5306 --database=homo_sapiens_core_73_37 --user=anonymous -B -A -e "select stable_id as ensembl,description from gene where description is not null;" > /mnt/biowaste/data2/christian.frech/iamp/results/current/anduril/ensembl.homo_sapiens_73_37.geneAnnotations.tsv
-geneAnnot = INPUT(path="/mnt/synology/data/christian/iamp/results/current/anduril/ensembl.homo_sapiens_75_37.geneAnnotations.tsv")
-
-gMoksisA = PiispanhiippaAnnotator(sourceKeys = deseqExprMatrix.expr @require,
-                                  connection = moksiskaanInit.connection,
-                                  inputDB    = XrefType_Ensembl_gene,
-                                  organism   = Organism_Homo_sapiens,
-                                  targetDB   = "BioentityName,DNARegion")
-
-geneNames = CSVCleaner(original   = gMoksisA.bioAnnotation,
-                       columns    = "sourceKey,BioentityName,DNARegion",
-                       rename     = "sourceKey=Ensembl,BioentityName=Gene",
-                       skipQuotes = "*",
-                       trim       = true,
-                       @keep      = true)
-
-
-
-//gstats  = record(genes=geneNames)
-gstats  = record()
-groups  = record()
-degLst  = record()
-pgeReports = record()
-eCSSRow = ""
-for comparison : std.itercsv(comparisons) {
-  gCase    = null
-  gControl = null
-  for g : std.split(comparison.Members, ',') {
-     if (gCase    == null) { gCase    = g } else
-     if (gControl == null) { gControl = g } else
-     std.fail("Too many groups listed for ", comparison.ID, " (", comparison.Description, "). Members = ", comparison.Members, sep='')
-  }
-  setName = "stest_"+comparison.ID
-  std.echo("***** Comparing", gCase, "expressions against", gControl, "expressions: "+setName)
-  gLab = std.strReplace(comparison.ID, "^fc", "")
-  groups[gLab] = {
-    'id'       = gLab,
-    'caseG'    = gCase,
-    'controlG' = gControl,
-    'stest'    = setName,
-    'desc'     = comparison.Description
-  }
-  eCSSRow = "*\t"+comparison.ID+"\t0.00\ttrue\tNA\tNA\tNA\t#0000BB\t#ffffff\tNA\t<= -"+fcLimitInclude+"\n"+
-            "*\t"+comparison.ID+"\t0.00\ttrue\tNA\tNA\tNA\t#00FF00\t#ffffff\tNA\t>= "+ fcLimitInclude+"\n"+
-            "*\tp"+gLab+"\t0.00e00\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\n"+
-            "*\tq"+gLab+"\t0.00e00\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\n"+
-            "*\tp"+gLab+"\tNA\ttrue\tNA\tNA\tNA\t#ff0000\tNA\tNA\t<= "+pLimitInclude+"\n"+
-            "*\tq"+gLab+"\tNA\ttrue\tNA\tNA\tNA\t#ff0000\tNA\tNA\t<= "+qLimitInclude+"\n"+
-            eCSSRow
-
-  if (gLab == "iAMPspecvsCD19") {
-	  @out.table.filename = "stats.csv"
-	  stest = TableQuery(table1 = stest_fciAMPvsCD19.table @require,
-	                     table2 = degs_iAMPvsPC.table @ require,
-	                     table3 = degs_iAMPvsER.table @ require,
-	                     table4 = stest_fcERvsPC.table @ require,
-	                       query  = """\
-	                                SELECT A."ids",	
-	                                       A."meanExpriAMPvsCD19" AS "meanExpriAMPspecvsCD19", 
-	                                       A."fciAMPvsCD19"       AS "fciAMPspecvsCD19",
-	                                       A."fcSEiAMPvsCD19"     AS "fcSEiAMPspecvsCD19", 
-	                                       A."stat",
-	                                       A."piAMPvsCD19"        AS "piAMPspecvsCD19",
-	                                       A."qiAMPvsCD19"        AS "qiAMPspecvsCD19"
-	                                FROM   table1 A 
-	                                       INNER JOIN table2 B ON (A."ids" = B."ids")
-	                                       INNER JOIN table3 C ON (A."ids" = C."ids")
-	                                       LEFT OUTER JOIN table4 D ON (A."ids" = D."ids")
-	                                WHERE  (D."fcERvsPC" IS NULL OR ABS(D."fcERvsPC") < """+fcLimitExclude+""" OR  
-	                                       D."pERvsPC" IS NULL OR D."pERvsPC" > """+pLimitExclude+""" OR  
-	                                       D."qERvsPC" IS NULL OR D."qERvsPC" > """+qLimitExclude+""" OR  
-	                                       D."meanExprERvsPC" IS NULL OR D."meanExprERvsPC" < """+minExprExclude+""")
-	                                ORDER  BY 1
-	                                """,
-	                       @name = setName)
-	  gstats[gLab] = stest.table
-  } else if (gLab == "PCspecvsCD19") {
-	  @out.table.filename = "stats.csv"
-	  stest = TableQuery(table1 = stest_fcPCvsCD19.table @require,
-	                     table2 = degs_iAMPvsPC.table @ require,
-	                     table3 = degs_ERvsPC.table @ require,
-	                     table4 = stest_fciAMPvsER.table @ require,
-	                       query  = """\
-	                                SELECT A."ids",	
-	                                       A."meanExprPCvsCD19" AS "meanExprPCspecvsCD19", 
-	                                       A."fcPCvsCD19"       AS "fcPCspecvsCD19",
-	                                       A."fcSEPCvsCD19"     AS "fcSEPCspecvsCD19", 
-	                                       A."stat",
-	                                       A."pPCvsCD19"        AS "pPCspecvsCD19",
-	                                       A."qPCvsCD19"        AS "qPCspecvsCD19"
-	                                FROM   table1 A 
-	                                       INNER JOIN table2 B ON (A."ids" = B."ids")
-	                                       INNER JOIN table3 C ON (A."ids" = C."ids")
-	                                       LEFT OUTER JOIN table4 D ON (A."ids" = D."ids")
-	                                WHERE  (D."fciAMPvsER" IS NULL OR ABS(D."fciAMPvsER") < """+fcLimitExclude+""" OR  
-	                                       D."piAMPvsER" IS NULL OR D."piAMPvsER" > """+pLimitExclude+""" OR  
-	                                       D."qiAMPvsER" IS NULL OR D."qiAMPvsER" > """+qLimitExclude+""" OR  
-	                                       D."meanExpriAMPvsER" IS NULL OR D."meanExpriAMPvsER" < """+minExprExclude+""")
-	                                ORDER  BY 1
-	                                """,
-	                       @name = setName)
-	  gstats[gLab] = stest.table
-  } else if (gLab == "ERspecvsCD19") {
-	  @out.table.filename = "stats.csv"
-	  stest = TableQuery(table1 = stest_fcERvsCD19.table @require,
-	                     table2 = degs_iAMPvsER.table @ require,
-	                     table3 = degs_ERvsPC.table @ require,
-	                     table4 = stest_fciAMPvsPC.table @ require,
-	                       query  = """\
-	                                SELECT A."ids",	
-	                                       A."meanExprERvsCD19" AS "meanExprERspecvsCD19", 
-	                                       A."fcERvsCD19"       AS "fcERspecvsCD19",
-	                                       A."fcSEERvsCD19"     AS "fcSEERspecvsCD19", 
-	                                       A."stat",
-	                                       A."pERvsCD19"        AS "pERspecvsCD19",
-	                                       A."qERvsCD19"        AS "qERspecvsCD19"
-	                                FROM   table1 A 
-	                                       INNER JOIN table2 B ON (A."ids" = B."ids")
-	                                       INNER JOIN table3 C ON (A."ids" = C."ids")
-	                                       LEFT OUTER JOIN table4 D ON (A."ids" = D."ids")
-	                                WHERE  (D."fciAMPvsPC" IS NULL OR ABS(D."fciAMPvsPC") < """+fcLimitExclude+""" OR  
-	                                       D."piAMPvsPC" IS NULL OR D."piAMPvsPC" > """+pLimitExclude+""" OR  
-	                                       D."qiAMPvsPC" IS NULL OR D."qiAMPvsPC" > """+qLimitExclude+""" OR  
-	                                       D."meanExpriAMPvsPC" IS NULL OR D."meanExpriAMPvsPC" < """+minExprExclude+""")
-	                                ORDER  BY 1
-	                                """,
-	                       @name = setName)
-	  gstats[gLab] = stest.table
-  } else if (gLab == "iAMPandPCspecvsCD19") {
-	  @out.table.filename = "stats.csv"
-	  stest = TableQuery(table1 = stest_fciAMPandPCvsCD19.table @require,
-	                     table2 = degs_iAMPvsER.table @ require,
-	                     table3 = degs_ERvsPC.table @ require,
-	                     table4 = stest_fcERvsCD19.table @ require,
-	                       query  = """\
-	                                SELECT A."ids",	
-	                                       A."meanExpriAMPandPCvsCD19" AS "meanExpriAMPandPCspecvsCD19", 
-	                                       A."fciAMPandPCvsCD19"       AS "fciAMPandPCspecvsCD19",
-	                                       A."fcSEiAMPandPCvsCD19"     AS "fcSEiAMPandPCspecvsCD19", 
-	                                       A."stat",
-	                                       A."piAMPandPCvsCD19"        AS "piAMPandPCspecvsCD19",
-	                                       A."qiAMPandPCvsCD19"        AS "qiAMPandPCspecvsCD19"
-	                                FROM   table1 A 
-	                                       INNER JOIN table2 B ON (A."ids" = B."ids")
-	                                       INNER JOIN table3 C ON (A."ids" = C."ids")
-	                                       LEFT OUTER JOIN table4 D ON (A."ids" = D."ids")
-	                                WHERE  (D."fcERvsCD19" IS NULL OR ABS(D."fcERvsCD19") < """+fcLimitExclude+""" OR  
-	                                       D."pERvsCD19" IS NULL OR D."pERvsCD19" > """+pLimitExclude+""" OR  
-	                                       D."qERvsCD19" IS NULL OR D."qERvsCD19" > """+qLimitExclude+""" OR  
-	                                       D."meanExprERvsCD19" IS NULL OR D."meanExprERvsCD19" < """+minExprExclude+""")
-	                                ORDER  BY 1
-	                                """,
-	                       @name = setName)
-	  gstats[gLab] = stest.table
-  } else {
-	  @out.results.filename = "stats.csv"
-	  stest = DESeq2
-	  (
-	  	countFiles = bamCounts,
-	    samples = sampleGroups,
-	    nameControl = gControl,
-	    nameCase = gCase,
-	    label = gLab,
-	    @name = setName
-	  )
-	  gstats[gLab] = stest.results
-  }
-
-  degCall = TableQuery(table1 = gstats[gLab] @require,
-                       query  = """\
-                                SELECT DISTINCT "ids", "fc"""+gLab+"""" AS "fc", "p"""+gLab+"""" AS "p", "q"""+gLab+"""" AS "q" 
-                                FROM   table1
-                                WHERE  (ABS("fc"""+gLab+'''")  >= '''+fcLimitInclude+""") AND
-                                       ("p"""+gLab+'''"        <= '''+pLimitInclude +""") AND
-                                       ("q"""+gLab+'''"        <= '''+qLimitInclude +""") AND
-                                       (("meanExprE"""+gLab+'''" >= '''+minExprInclude+""") OR
-                                       ("meanExprC"""+gLab+'''" >= '''+minExprInclude+"""))
-                                ORDER  BY 1
-                                """,
-                       @name  = "degs_"+gLab)
-  degLst[gLab] = degCall.table
-
-	//--- POSITIONAL GENE ENRICHMENT -------------------------------------------------------------------------------//
-	
-	pgeReports[gLab] = PGEReport
+degAllLst  = record()        // unfiltered output of DESeq2 for each comparison
+degCalledLst  = record()     // only significant DEGs for each comparison
+for ID, group : groups
+{
+	// compute differential expression statistics with DESeq2
+	deseq = DESeq2
 	(
-		query=degCall.table, 
-		reference=gtf, 
-		title=gLab,
-		pvalue=0.001,
-		includeHeader=std.length(pgeReports)==0,
-		@name="pge_"+gLab
-  )
-  
-  // make 'CD19+' match in following regular expression 
-  gControlEscaped = std.strReplace(gControl,"\\+","\\\\+")
-    
-  samples = CSV2IDList(table1    = sampleGroups @require,
-                       columnIn  = "Members",
-                       columnOut = ".GeneId",
-                       isList    = true,
-                       regexp1   = "ID=("+gCase+"|"+gControlEscaped+")",
-                       @name     = "samples_"+gLab)
-  groups[gLab].samples = samples.ids
+		countFiles  = bamCounts,
+		samples     = sampleGroups,
+	    nameControl = group.controlG,
+	    nameCase    = group.caseG,
+	    label       = ID,
+	    @name       = "deseq_"+ID
+	)
+	degAllLst[ID] = deseq.results
+
+	// filter for statistically significant DEGs
+	degCalled = TableQuery
+	(
+		table1 = deseq @require,
+		query  = 
+			"""
+			SELECT DISTINCT "ids"                 AS "ids", 
+			                "fc"""+ID+""""        AS "fc", 
+			                "meanExprE"""+ID+"""" AS "meanExprE", 
+			                "meanExprC"""+ID+"""" AS "meanExprC", 
+			                "p"""+ID+""""         AS "p", 
+			                "q"""+ID+""""         AS "q" 
+			FROM   table1
+				WHERE  (ABS("fc"""+ID+"""")    >= """ + fcLimitInclude + """) AND
+					   ("p"""+ID+""""          <= """ + pLimitInclude  + """) AND
+					   ("q"""+ID+""""          <= """ + qLimitInclude  + """) AND
+					   (("meanExprE"""+ID+"""" >= """ + minExprInclude + """) OR
+					   ("meanExprC"""+ID+""""  >= """ + minExprInclude + """))
+					   ORDER  BY 1
+			""",
+			@name  = "degCalled_"+ID
+	)
+	degCalledLst[ID] = degCalled.table
 }
 
- 
+//------------------------------------------------------------------------------------------------
+//--- VENN DIAGRAMS
+//------------------------------------------------------------------------------------------------
 
-degReportRefs = XrefLinkRule
-(
-	moksiskaan = moksiskaanInit.connection,
-	columns    = "Ensembl=Ensembl",
-	xrefTypes  = XrefType_Ensembl_gene
-)
-
-/*
-statsAllTable = CSVJoin(array = gstats @require, intersection = true)
-
-statsAllCSS = StringInput(content=std.concat(sep="\n",
-  "Row\tColumn\tFormat\tBold\tAlign\tFontSize\tUnderline\tTextColor\tBGColor\tBorder\tCondition",
-  "1\t*\tNA\ttrue\tNA\t12\ttrue\t#000000\t#ffffff\tNA\tNA",
-  "*\tEnsembl\tNA\tfalse\tleft\t6\tfalse\tNA\tNA\tNA\tNA",
-  "*\tDNARegion\tNA\tNA\tleft\t6\tfalse\tNA\tNA\tNA\tNA",
-  eCSSRow
-))
-
-statsAllExcel = CSV2Excel(csv           = statsAllTable,
-                          refs          = degReportRefs,
-                          style         = statsAllCSS,
-                          frozenColumns = 2,
-                          frozenRows    = 1,
-                          sheetNames    = "statistics")
-*/
-
-//--- VENN DIAGRAMS -------------------------------------------------------------------------------//
-
-degSets = CSV2SetList(tables=degLst)
+degSets = CSV2SetList(tables=degCalledLst)
 
 venn = VennDiagram
 (
@@ -407,40 +269,56 @@ venn = VennDiagram
 	types        = "circles"
 )
 
-degReports = record(venn=venn.report)
+degReportLst = record(venn=venn.report)
 
-//--- DEG REPORTS ------------------------------------------------------------------------------------------------------------//
+//------------------------------------------------------------------------------------------------
+//--- DEG REPORTS
+//------------------------------------------------------------------------------------------------
+
+include "degTable.and"
+include "degBoxPlot.and"
+include "goClustering.and"
+include "goEnrichment.and"
+include "expressionHeatmap.and"
+
+gMoksisA = PiispanhiippaAnnotator(sourceKeys = deseqExprMatrix.expr @require,
+                                  connection = moksiskaanInit.connection,
+                                  inputDB    = XrefType_Ensembl_gene,
+                                  organism   = Organism_Homo_sapiens,
+                                  targetDB   = "BioentityName,DNARegion")
+
+geneNames = CSVCleaner(original   = gMoksisA.bioAnnotation,
+                       columns    = "sourceKey,BioentityName,DNARegion",
+                       rename     = "sourceKey=Ensembl,BioentityName=Gene",
+                       skipQuotes = "*",
+                       trim       = true,
+                       @keep      = true)
 
 degTables = record()
 for ID, group : groups 
 {
 	std.echo("***** Preparing results for", ID, "comparison.")
 	
-	degs  = degLst[ID]
-	stest = gstats[ID]
-
-	//--- PREPARE TABLE WITH DIFFERENTIALLY EXPRESSED GENES ------------------------------------------------------------------//
-
+	//--- PREPARE TABLE WITH DIFFERENTIALLY EXPRESSED GENES IN OUTPUT FORMAT ------------------------------------------------//
+	
 	degTable = TableQuery
 	(
-		table1 = degs      @require,
-		table2 = stest     @require,
-		table3 = geneNames @require,
-		table4 = geneAnnot @require,
+		table1 = degCalledLst[ID] @require,
+		table2 = geneNames        @require,
+		table3 = geneAnnot        @require,
 		query  = '''
-			SELECT G."ids"                      AS "Ensembl",
-			A."Gene"                     AS "Gene",
-			S."fc'''+group.id+'''"       AS "fc",
-			S."meanExprE'''+group.id+'''" AS "exprA",
-			S."meanExprC'''+group.id+'''" AS "exprB",
-			S."q'''+group.id+'''"        AS "qValue",
+			SELECT G."ids"                        AS "Ensembl",
+			A."Gene"                              AS "Gene",
+			G."fc"                                AS "fc",
+			G."meanExprE"                         AS "exprA",
+			G."meanExprC"                         AS "exprB",
+			G."q"                                 AS "qValue",
 			CONCAT(D."Chromosome Name", D."Band") AS "Band",
-			SUBSTR(D."Description", 1, 65) AS "Description",
-			CASEWHEN(S."fc'''+group.id+'''" > 0, 1, -1) AS "status"
-			FROM   table1 G, table2 S
-				LEFT OUTER JOIN table3 AS A ON (G."ids" = A."Ensembl")
-				LEFT OUTER JOIN table4 AS D ON (G."ids" = D."Ensembl Gene ID")
-			WHERE  (G."ids" = S."ids")
+			SUBSTR(D."Description", 1, 65)        AS "Description",
+			CASEWHEN(G."fc" > 0, 1, -1)           AS "status"
+			FROM table1 G
+				LEFT OUTER JOIN table2 AS A ON (G."ids" = A."Ensembl")
+				LEFT OUTER JOIN table3 AS D ON (G."ids" = D."Ensembl Gene ID")
 			ORDER  BY "qValue", ABS("fc") DESC
 		''',
 		@name  = "degTable_"+ID
@@ -453,20 +331,22 @@ for ID, group : groups
 	degTableUp = getDEGTableReport
 	(
 		degs = degTable,
-		degReportRefs = degReportRefs,
+		degReportRefs = ensemblRef,
 		direction = "up",
 		group = group,
 		ID=ID,
+		sectionType="subsubsection",
 		@name = "degTableUp_"+ID
 	)
 
 	degTableDn = getDEGTableReport
 	(
 		degs = degTable,
-		degReportRefs = degReportRefs,
+		degReportRefs = ensemblRef,
 		direction = "down",
 		group = group,
 		ID=ID,
+		sectionType="subsubsection",
 		@name = "degTableDn_"+ID
 	)
 
@@ -480,6 +360,7 @@ for ID, group : groups
 		geneAnnot=geneAnnot,
 		direction="up",
 		group=group,
+		sectionType="subsubsection",
 		@name = "degBoxplotUp_"+ID
 	)
 
@@ -491,6 +372,7 @@ for ID, group : groups
 		geneAnnot=geneAnnot,
 		direction="down",
 		group=group,
+		sectionType="subsubsection",
 		@name = "degBoxplotDn_"+ID
 	)
 
@@ -499,7 +381,7 @@ for ID, group : groups
 	exprMatrixFiltered = CSVFilter
 	(
 		csv            = deseqExprMatrix.expr,
-		auxiliary      = degs @require,
+		auxiliary      = degCalledLst[ID] @require,
 		includeColumns = group.samples,
 		includeColumns = "RowName",
 		colOrder       = true,
@@ -511,6 +393,7 @@ for ID, group : groups
 		exprMatrix = exprMatrixFiltered,
 		geneNames = geneNames,
 		group = group,
+		sectionType="subsubsection",
 		@name = "heatmap"+ID
 	)
 
@@ -520,115 +403,296 @@ for ID, group : groups
 	(
 		exprMatrix = exprMatrixFiltered,
 		geneNames = geneNames,
+		geneGO    = geneGO,
 		ID = ID,
+		sectionType="subsubsection",
 		@name = "goClustering"+ID
 	)
-  
+
+	//--- GO ENRICHMENT -------------------------------------------------------------------------------//
+
+	goEnrichment = getGOEnrichmentReport
+	(
+		geneIds      = degCalledLst[ID],
+		geneNames    = geneNames,
+		geneGO       = geneGO,
+		threshold    = 0.01,
+		ID           = ID,
+		sectionTitle = "GO terms enriched in DEGs between " + group.caseG + " and " + group.controlG,
+		sectionType  = "subsubsection",
+		@name        = "goEnrichment"+ID
+	)
+	
+	//--- GENE INTERACTION NETWORK --------------------------------------------------------------------//
+	
+	statusTable = TableQuery
+	(
+		table1   = degTables[ID] @require,
+		table2   = degAllLst[ID] @require,
+		query    = '''
+			SELECT "Ensembl", "status" FROM table1
+			UNION
+			SELECT T2."ids" AS "Ensembl", 1 AS "status"
+			FROM   table2 T2 LEFT JOIN table1 T1 ON T2."ids" = T1."Ensembl" 
+			WHERE  T1."Ensembl" IS NULL AND T2."meanExpr'''+ID+'''" >= 10 AND T2."q'''+ID+'''" < 0.01 AND T2."fc'''+ID+'''" >= 1
+			UNION
+			SELECT T2."ids" AS "Ensembl", -1 AS "status"
+			FROM   table2 T2 LEFT JOIN table1 T1 ON T2."ids" = T1."Ensembl" 
+			WHERE  T1."Ensembl" IS NULL AND T2."meanExpr'''+ID+'''" >= 10 AND T2."q'''+ID+'''" < 0.01 AND T2."fc'''+ID+'''" <= -1
+			UNION
+			SELECT T2."ids" AS "Ensembl", 0 AS "status"
+			FROM   table2 T2 LEFT JOIN table1 T1 ON T2."ids" = T1."Ensembl" 
+			WHERE  T1."Ensembl" IS NULL AND T2."meanExpr'''+ID+'''" >= 300 AND T2."q'''+ID+'''" >= 0.9 AND T2."fc'''+ID+'''" > -0.1 AND T2."fc'''+ID+'''" < 0.1
+			UNION
+			SELECT T2."ids" AS "Ensembl", -2 AS "status"
+			FROM   table2 T2 LEFT JOIN table1 T1 ON T2."ids" = T1."Ensembl" 
+			WHERE  T1."Ensembl" IS NULL AND T2."meanExpr'''+ID+'''" < 10
+            ''',
+		@name    = "statusTable_"+ID
+	)
+	
+    network = InteractionNetwork
+    (
+    	force genes  = degCalledLst[ID],
+		force status = statusTable,
+		moksiskaan   = moksiskaanInit.connection,
+		ensembl      = ensemblDb,
+		organism     = Organism_Homo_sapiens,
+		title        = "Interaction network of DEGs between " + group.caseG + " and " + group.controlG,
+		linkTypes    = std.concat(sep=",",
+			//LinkType_pathway_precedence,
+			//LinkType_protein_protein_interaction,
+			LinkType_chemical_reaction,
+			LinkType_protein_activation,
+			LinkType_protein_inhibition,
+			LinkType_protein_state_change,
+			LinkType_protein_binding,
+			LinkType_protein_dissociation,
+			LinkType_gene_expression,
+			LinkType_gene_repression,
+			LinkType_phosphorylation,
+			LinkType_dephosphorylation,
+			LinkType_glycosylation,
+			LinkType_ubiquitination,
+			LinkType_deubiquitination,
+			LinkType_methylation,
+			LinkType_demethylation,
+			LinkType_acetylation,
+			LinkType_deacetylation,
+			LinkType_sumoylation,
+			LinkType_desumoylation
+		),
+		annotRules        = "",
+		bioentityTypes    = BioentityType_gene,
+		maxGap            = 1,
+		cytoscape         = false,
+		useStudies        = "",
+		hideGaps          = false,
+		isolateGroupNames = false,
+		expand            = "connected",
+		statusFilter      = "NA",
+		sectionType       = "subsubsection",
+		@name             = "network_"+ID
+	)
+ 
 	//--- COMBINE REPORTS -----------------------------------------------------------------------------//
 
-	degReports[ID] = LatexCombiner
+	degReportLst[ID] = LatexCombiner
 	(
 		latex1=degTableUp, 
 		latex2=degBoxplotUp, 
 		latex3=degTableDn, 
 		latex4=degBoxplotDn, 
 		latex5=exprHeatmap, 
-		latex6=goClustering, 
+//		latex6=goClustering,
+		latex7=goEnrichment,
+		latex8=network.report, 
 		sectionTitle="DEGs: "+group.desc, 
-		sectionType="section"
+		sectionType="subsection"
 	)
 }
 
-// add report about expression of selected genes
-boxplotSelectedGenes = REvaluate(var1   = deseqExprMatrix.expr    @require @doc="Expression matrix",
-                        table1 = sampleGroupsSimple  @require @doc="Sample sets",
-                        table2 = geneAnnot           @require @doc="Gene annotations",
-                        param1 = 'Expression of manually selected genes. MME=CD10; MS4A1=CD20',
-                        param2 = "ETV6,RUNX1,CRLF2,P2RY8,EBF1,PAX5,VPREB1,HMGN1,MME,CD34,CD19,MS4A1",
-                        script = boxplotscript)
-degReports["selectedGenes"] = LatexCombiner(latex1=boxplotSelectedGenes.document, pagebreak=true, sectionTitle="Expression of selected genes", sectionType="section")
-
-degReports["pges"] = LatexCombiner
+degReport = LatexCombiner
 (
-	array=pgeReports, 
+	array        = degReportLst,
+	pagebreak    = true,
+	tail         = '\newpage{}',
+	sectionTitle = "Differentially expressed genes"
+)
+
+
+//------------------------------------------------------------------------------------------------
+//--- EXPRESSION BOX PLOTS OF SELECTED GENES
+//------------------------------------------------------------------------------------------------
+
+boxplotSelectedGenes = REvaluate
+(
+	var1   = deseqExprMatrix.expr    @require @doc="Expression matrix",
+	table1 = sampleGroupsSimple  @require @doc="Sample sets",
+	table2 = geneAnnot           @require @doc="Gene annotations",
+	param1 = 'Expression of manually selected genes. MME=CD10; MS4A1=CD20',
+	param2 = "ETV6,RUNX1,CRLF2,P2RY8,EBF1,PAX5,VPREB1,HMGN1,MME,CD34,CD19,MS4A1",
+	script = boxplotscript
+)
+
+boxplotSelectedGenesReport = LatexCombiner
+(
+	latex1=boxplotSelectedGenes.document, 
+	pagebreak=true, 
+	sectionTitle="Expression of selected genes", 
+	sectionType="section"
+)
+
+//------------------------------------------------------------------------------------------------
+//--- POSITIONAL GENE ENRICHMENT
+//------------------------------------------------------------------------------------------------
+
+include "pgeReport.and"
+
+pgeReportLst = record()
+for comparison : std.itercsv(comparisons) {
+	gLab = std.strReplace(comparison.ID, "^fc", "")
+	
+	pgeReportLst[gLab] = PGEReport
+	(
+		query=degCalledLst[gLab], 
+		reference=gtf, 
+		title=gLab,
+		pvalue=0.001,
+		includeHeader=std.length(pgeReportLst)==0,
+		@name="pge_"+gLab
+	)
+}
+	
+pgeReport = LatexCombiner
+(
+	array=pgeReportLst, 
 	pagebreak=true, 
 	sectionTitle="Positional gene enrichment (PGE) of differentially expressed genes", 
 	sectionType="section"
 )
 
-degViews = LatexCombiner(array        = degReports,
-                         pagebreak    = true,
-                         tail         = '\newpage{}',
-                         sectionTitle = "Differentially expressed genes")
-
-degTablesExcel = CSV2Excel(array         = degTables,
-                           refs          = degReportRefs,
-                           frozenColumns = 2,
-                           frozenRows    = 1,
-                           missingValue  = '')
-
-// -------------------- //
-//  FUNCTIONAL ANALYSIS //
-// -------------------- //
+//------------------------------------------------------------------------------------------------
+//--- FUNCTIONAL ANALYSIS REPORT
+//------------------------------------------------------------------------------------------------
 
 include "functionalAnalysis.and"
-if (useFunct) {
-	createFunctionalAnalysisReport(groups=groups, degTables=degTables, gstats=gstats, degLst=degLst)
-}
-
-// --------------------------------
-// Experimental setup
-// --------------------------------
-expSetup1   = ExperimentSetup(force groups = sampleGroups,
-                              definWidth   = 10.0,
-                              descWidth    = 6.0,
-                              sectionType  = "subsection",
-                              sectionTitle = "Sample groups")
-expSetup2   = ExperimentSetup(force groups = comparisons,
-                              definWidth   = 7.0,
-                              descWidth    = 9.0,
-                              sectionType  = "subsection",
-                              sectionTitle = "Comparisons between sample groups")
-expSetupGV1 = GraphVisualizer(expSetup1.graph,
-                              reportHeight = 26,
-                              reportWidth  = 18,
-                              layout       = "spring2",
-                              latexTail    = '\newpage{}')
-expSetupGV2 = GraphVisualizer(expSetup2.graph,
-                              reportHeight = 26,
-                              reportWidth  = 18,
-                              layout       = "spring2",
-                              latexTail    = '\newpage{}')
-
-expReport = LatexCombiner(expSetup1.report,
-  						  expSetup2.report,
-  						  expSetupGV1.figure,
-  						  expSetupGV2.figure,
-                          sectionTitle = "Experimental setup",
-                          sectionType  = "section",
-                          pagebreak    = true)
-
-
-// --------------------------------
-// final report
-// --------------------------------
-
-
-combinedLatex = LatexCombiner(array={
-  expReport,
-  qcReport,
-  degViews,
-  rConfig.report},
-  @keep = false,
-  @cpu=4,
-  @memory=1000,
-  @host="biowaste"
+funcReport = createFunctionalAnalysisReport
+(
+	geneGO=geneGO,
+	groups=groups, 
+	degTables=degTables, 
+	gstats=degAllLst, 
+	degLst=degCalledLst,
+	@enabled = useFunct
 )
 
-combinedPDF = LatexPDF(document = combinedLatex,
-                    header   = docTemplate.header,
-                    footer   = docTemplate.footer,
-                    useRefs  = true,
-                    verbose  = false)
+//------------------------------------------------------------------------------------------------
+//--- FINAL REPORTS
+//------------------------------------------------------------------------------------------------
+
+rConfig = RConfigurationReport(packages = "base,csbl.go,DESeq2,igraph", sectionType = "subsection")
+bibtexMoksiskaan = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/components/report-BibTeX/moksiskaan.bib")
+bibtexSequencing = INPUT(path="/usr/local/share/anduril-bundles/sequencing/components/report-BibTeX/sequencing.bib")
+
+docTemplate = LatexTemplate
+(
+	authors  = std.quote(authors, type="LaTeX"),
+	bibtex1  = rConfig.citations,
+	bibtex2  = bibtexMoksiskaan,
+	bibtex3  = bibtexSequencing,
+	title    = std.quote(title, type="LaTeX"),
+	printTOC = true
+)
+
+combinedReport = LatexCombiner
+(
+	array={
+		experimentReport,
+		qcReport,
+		degReport,
+		boxplotSelectedGenesReport,
+		pgeReport,
+		rConfig.report
+	}
+)
+
+combinedPDF = LatexPDF
+(
+	document = combinedReport,
+	header   = docTemplate.header,
+	footer   = docTemplate.footer,
+	useRefs  = true,
+	verbose  = false
+)
+
+functioPDF = LatexPDF
+(
+	document = funcReport,
+	header   = docTemplate.header,
+	footer   = docTemplate.footer,
+	useRefs  = true,
+	verbose  = false,
+	@enabled = useFunct
+)
+	
 
 OUTPUT(combinedPDF.document)
+OUTPUT(functioPDF.document)
+
+//------------------------------------------------------------------------------------------------
+//--- EXCEL FILES WITH DIFFERENTIALLY EXPRESSED GENES
+//------------------------------------------------------------------------------------------------
+
+@out.excelFile.filename = "diff-expressed-genes.xls"
+degCalledExcel = CSV2Excel
+(
+	array         = degTables,
+	refs          = ensemblRef,
+	frozenColumns = 2,
+	frozenRows    = 1,
+	missingValue  = ''
+)
+
+OUTPUT(degCalledExcel.excelFile)
+
+/*
+eCSSRow = ""
+for ID, group : groups
+{ 
+	eCSSRow = "*\tfc"+ID+"\t0.00\ttrue\tNA\tNA\tNA\t#0000BB\t#ffffff\tNA\t<= -"+fcLimitInclude+"\n"+
+            "*\tfc"+ID+"\t0.00\ttrue\tNA\tNA\tNA\t#00FF00\t#ffffff\tNA\t>= "+ fcLimitInclude+"\n"+
+            "*\tp"+ID+"\t0.00e00\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\n"+
+            "*\tq"+ID+"\t0.00e00\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\n"+
+            "*\tp"+ID+"\tNA\ttrue\tNA\tNA\tNA\t#ff0000\tNA\tNA\t<= "+pLimitInclude+"\n"+
+            "*\tq"+ID+"\tNA\ttrue\tNA\tNA\tNA\t#ff0000\tNA\tNA\t<= "+qLimitInclude+"\n"+
+            eCSSRow
+}
+
+degAllTable = CSVJoin(array = degAllLst @require, intersection = true)
+
+degAllCSS = StringInput
+(
+	content=std.concat(sep="\n",
+		"Row\tColumn\tFormat\tBold\tAlign\tFontSize\tUnderline\tTextColor\tBGColor\tBorder\tCondition",
+		"1\t*\tNA\ttrue\tNA\t12\ttrue\t#000000\t#ffffff\tNA\tNA",
+		"*\tEnsembl\tNA\tfalse\tleft\t6\tfalse\tNA\tNA\tNA\tNA",
+		"*\tDNARegion\tNA\tNA\tleft\t6\tfalse\tNA\tNA\tNA\tNA",
+		eCSSRow
+	)
+)
+
+@out.excelFile.filename = "all-genes.xls"
+degAllExcel = CSV2Excel
+(
+	csv           = degAllTable,
+	refs          = ensemblRef,
+	style         = degAllCSS,
+	frozenColumns = 2,
+	frozenRows    = 1,
+	sheetNames    = "statistics"
+)
+
+OUTPUT(degAllExcel.excelFile)
+*/
+

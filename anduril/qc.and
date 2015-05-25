@@ -1,67 +1,234 @@
-// ----------------- //
-//  QUALITY CONTROL  //
-// ----------------- //
-
-/** Prepares some quality control plots for the given expression matrix. */
+/** Prepares some quality control plots for the given BAM files and expression matrix. */
 function getQCReport
 (
-	Array<BAM>	 	 alignedBAMs,
 	GTF              gtf,
 	Matrix           expr,
 	SampleGroupTable groups,
+	record		 	 alignedBAMs,
 	string           title = "Quality Control"
 ) -> (Latex report)
 {
 
-	readStats = RNASeqReadStats(reads=alignedBAMs, gtf=gtf)
-	readStatsChart = RNASeqReadStatsBarChart(stats=readStats.counts)
+	// determine number of reads per sample and category
+	readStats = RNASeqReadStats
+	(
+		alignedBAMs = alignedBAMs, 
+		gtf         = gtf
+	)
+	
+	// create bar chart with read numbers
+	readStatsChart = RNASeqReadStatsBarChart
+	(
+		stats = readStats
+	)
 
-    cumsum = Plot2D(y              = expr,
-                    sectionTitle   = "Distribution of the expression values",
-                    caption        = "Ordered list of expression values",
-                    legendPosition = "off",
-                    xLabel         = "genes",
-                    yLabel         = "expression level",
-                    title          = "",
-                    sort           = true,
-                    plotType       = "l",
-                    imageType      = "single",
-                    height         = 11)
+	// gene body coverage
+	geneBodyCoverage = {}
+	for sample, bam : alignedBAMs 
+	{
+		geneBodyCoverage[sample] = CalcGeneBodyCoverage
+		(
+			bam = bam, 
+			docker = "biowaste:5000/anduril/rseqc",
+			@name="geneBodyCoverage_"+sample
+		)
+	}
+	
+	combinedCoverage = CSVJoin(array=geneBodyCoverage, useKeys=false)
+	
+	geneBodyCoveragePlot = REvaluate
+	(
+		table1 = combinedCoverage.csv,
+		script = StringInput(content=
+			'''
+			cov <- Matrix.read(get.input(cf, 'table1'))
+			document.dir <- get.output(cf, 'document')
+			
+			# for debugging
+			#save(list=ls(), file="/mnt/synology/data/christian/temp/dump.rda")
+			#stop(1)
+			
+			#dir.create(document.dir, recursive=TRUE)
+			
+			# convert to relative coverage by dividing counts by sums of rows
+			cov.norm <- sweep(cov, 1, apply(cov, 1, sum), '/')
+			rownames(cov.norm) <- unlist(lapply(strsplit(rownames(cov.norm), '\\.'), "[[", 1))
+			
+			# curves
+			plot.curve <- "coverageCurve.pdf"
+			pdf(file.path(document.dir, plot.curve))
+			x=1:100
+			icolor = colorRampPalette(c("#7fc97f","#beaed4","#fdc086","#ffff99","#386cb0","#f0027f"))(nrow(cov.norm))			
+			plot(x,cov.norm[1,], type='l', xlab="Gene body percentile (5'->3')", ylab="Relative coverage", lwd=0.8, col=icolor[1], ylim=c(0, max(cov.norm)))
+			for (s in 2:nrow(cov.norm)) {
+				lines(x,cov.norm[s,], type='l', col=icolor[s])
+			}
+			#legend(0,1,fill=icolor[1:nrow(cov.norm)], legend=rownames(cov.norm))
+			dev.off()
+			
+			plot.heatmap <- "coverageHetmap.pdf"
+			
+			pdf(file.path(document.dir, plot.heatmap))
 
-    hclust = ClusterReport(matr         = expr,
-                           showDistance = false,
-                           sectionTitle = "Hierarchical clustering of the samples")
+			rc <- cm.colors(ncol(cov.norm))
+			heatmap(cov.norm, scale=c("none"), keep.dendro=T, Colv = NA, labCol=NA,
+					col=cm.colors(256), margins = c(6, 8), cexRow=1, cexCol=1,
+					xlab="Gene body percentile (5'->3')", 
+					add.expr=x_axis_expr <- axis(side=1,at=c(1,10,20,30,40,50,60,70,80,90,100),
+					labels=c("1","10","20","30","40","50","60","70","80","90","100"))
+			)
+			dev.off()
 
-    boxplot = BoxPlot(matr1      = expr,
-                      groups     = groups,
-                      caption1   = "",
-                      height     = 5,
-                      width      = 9,
-                      pagebreak  = true,
-                      drawLegend = false,
-                      plotType   = "boxplot",
-                      pngImage   = true,
-                      title1     = "Distributions of the expression values per sample",
-                      @bind      = cumsum)
+			# prepare latex document
+			tex <- character()
+			tex <- c(tex, '\\subsection{Gene body coverage}\\label{GeneBodyCoverage}')
+			tex <- c(tex, latex.figure(plot.curve, image.height=16, caption="Gene body coverage 5' to 3. The more uniform the distribution the better. Distributions heavily skewed to 5' or 3' usually indicate low quality of input RNA."))		    			    
+			tex <- c(tex, latex.figure(plot.heatmap, image.height=16, caption="Heatmap of gene body coverage from 5' to 3'. Darker colors indicate higher coverage. Samples (rows) with similar coverage distribution are clustered together. These clusters should not correspond to biological subgroups of interest to avoid batch effects."))		    			    
 
-    mds2D = MDSPlot(expr         = expr,
-                    groups       = groups,
-                    sectionTitle = "Two dimensional sample clustering",
-                    dimensions   = 2,
-                    plotNames    = true,
-                    width        = 10,
-                    pagebreak    = true,
-                    caption       = "Multidimensional scaling. Sample distances in the plot are proportional to differences in global gene expression.",
-                    @bind        = boxplot)
+			table.out <- data.frame() # not used
+			document.out <- tex
+			
+			return(0)
+			'''
+		)
+	)
+	
+    cumsum = Plot2D
+    (
+    	y              = expr,
+		sectionTitle   = "Distribution of the expression values",
+		caption        = "Ordered list of expression values",
+		legendPosition = "off",
+		xLabel         = "genes",
+		yLabel         = "expression level",
+		title          = "",
+		sort           = true,
+		plotType       = "l",
+		imageType      = "single",
+		height         = 11
+	)
 
-    report = LatexCombiner(readStatsChart.document,
-    					   cumsum,
-                           boxplot,
-                           hclust.report,
-                           mds2D.report,
-                           sectionTitle = title,
-                           sectionType  = "section",
-                           pagebreak    = true)
-    return report
+    hclust = ClusterReport
+    (
+    	matr         = expr,
+		showDistance = false,
+		sectionTitle = "Hierarchical clustering of the samples"
+	)
+
+    boxplot = BoxPlot
+    (
+    	matr1      = expr,
+		groups     = groups,
+		caption1   = "",
+		height     = 5,
+		width      = 9,
+		pagebreak  = true,
+		drawLegend = false,
+		plotType   = "boxplot",
+		pngImage   = true,
+		title1     = "Distributions of the expression values per sample",
+		@bind      = cumsum
+	)
+
+    mds2D = MDSPlot
+    (
+    	expr         = expr,
+		groups       = groups,
+		sectionTitle = "Two dimensional sample clustering",
+		dimensions   = 2,
+		plotNames    = true,
+		width        = 10,
+		pagebreak    = true,
+		caption       = "Multidimensional scaling. Sample distances in the plot are proportional to differences in global gene expression.",
+		@bind        = boxplot
+	)
+
+    report = LatexCombiner
+    (
+    	readStatsChart.document,
+    	geneBodyCoveragePlot.document,
+		cumsum,
+		boxplot,
+		hclust.report,
+		mds2D.report,
+		sectionTitle = title,
+		sectionType  = "section",
+		pagebreak    = true
+	)
+	
+	return report
 }
+
+// note: the following function is inline and not in an external component such that BAM read counting can start immediately after alignment
+//       if we passed an array with all aligned BAM file names as parameter instead, we would have to wait until all BAM files are aligend before read counting begins
+function RNASeqReadStats
+(
+	GTF    gtf,
+	record alignedBAMs
+) -> (CSV readStats)
+{
+	// convert GTF file to set of BED files for read counting
+	bedAllExons = BashEvaluate(var1 = gtf, script='''zcat @var1@ | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\t.*?\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	bedProteinCoding = BashEvaluate(var1 = gtf, script='''zcat @var1@ | perl -ne 'print "$1\t$3\t$4\t$5\n" if (/^(.*?)\t(protein_coding)\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	bedrRNA = BashEvaluate(var1 = gtf, script='''zcat @var1@ | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\trRNA\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	
+	bedArray = ArrayConstructor
+	(
+		file1=bedAllExons.optOut1, 
+		file2=bedProteinCoding.optOut1, 
+		file3=bedrRNA.optOut1, 
+		key1="allExons", 
+		key2="proteinCoding", 
+		key3="rRNA"
+	)
+	
+	counts = record()
+	for sample, bam : alignedBAMs 
+	{
+		count = BashEvaluate
+		(
+			var1 = bam, 
+			array1=bedArray,
+			param1=sample,
+		    script='''
+		    	bedFiles=( $( getarrayfiles array1 ) )		    
+		    	bedAllExons=${bedFiles[$( getarraykeyindex array1 allExons )]}
+		    	bedrRNA=${bedFiles[$( getarraykeyindex array1 rRNA )]}
+		    	bedProteinCoding=${bedFiles[$( getarraykeyindex array1 proteinCoding )]}
+		    	
+		    	# copy BAM file locally to not overallocate synology cifs
+		    	TMP=$(tempfile)
+		    	cp @var1@ $TMP
+		    	
+		    	countTotal=$(samtools view -c $TMP)
+		    	countPassFilter=$(samtools view -c -F 512 $TMP)
+		    	countMapped=$(samtools view -c -F 772 $TMP)
+		    	countAllExons=$(samtools view -c -F 772 $TMP -L $bedAllExons)
+		    	countrRNA=$(samtools view -c -F 772 $TMP -L $bedrRNA)
+		    	countNonrRNA=$(($countAllExons-$countrRNA))
+		    	countProteinCoding=$(samtools view -c -F 772 $TMP -L $bedProteinCoding)
+		    	countUnique=$(samtools view -F 772 $TMP -L $bedProteinCoding | grep "NH:i:1" | wc -l)
+		    	countNonDup=$(samtools view -F 1796 $TMP -L $bedProteinCoding | grep "NH:i:1" | wc -l)
+		    	
+		    	rm $TMP
+		    	
+		    	echo -e "sample\ttotal\tpass-filter\tmapped\texonic\tnon-rRNA\tprotein\tuniquely mapped\tnon-duplicates" > @optOut1@
+		    	echo -e "@param1@\t$countTotal\t$countPassFilter\t$countMapped\t$countAllExons\t$countNonrRNA\t$countProteinCoding\t$countUnique\t$countNonDup" >> @optOut1@
+		    	''',
+		    @cpu=3,        // IO intensive job; limit slurm over-allocation by artificially increasing requested CPUs 
+		    @name=sample
+		) 
+		counts[sample] = count.optOut1
+	}
+	
+	combinedCounts = CSVListJoin
+	(
+		files=counts, 
+		fileCol=""
+	)
+	
+	return combinedCounts.join
+}
+
+
 

@@ -4,7 +4,8 @@ function getDEGTableReport
 	CSV degReportRefs,
 	string direction,
 	record group,
-	string ID
+	string ID,
+	string sectionType
 ) -> (Latex report)
 {
 	// filter genes based on direction?
@@ -19,6 +20,12 @@ function getDEGTableReport
 	}
 	
 	// define table caption
+	/*
+	fcLimitExclude  = 1.00
+	qLimitExclude   = 0.20
+	pLimitExclude   = 0.1
+	minExprExclude  = 100.00
+	
 	if (ID == "iAMPspecvsCD19" || ID == "PCspecvsCD19" || ID == "ERspecvsCD19" || ID == "iAMPandPCspecvsCD19") {
 		if (direction == "up") {
 			caption = "List of genes significantly lower expressed exclusively in "+group.caseG+" samples."+
@@ -34,23 +41,23 @@ function getDEGTableReport
 					  ". Expression difference shown relative to CD19+ samples."
 		}
 	} 
+	*/
+
+	if (direction == "up") {
+		section = "Genes with higher expression in "+group.caseG+" than "+group.controlG+" samples"
+		caption = "List of genes significantly higher expressed in "+group.caseG+" samples compared to "+group.controlG+
+				  ' samples, where the $\log_2$ fold-change (fc)$ \geq '+fcLimitInclude+"$ and the minimum mean expression is above "+minExprInclude+
+				  " in at least one of the two groups. The highest p-value accepted is "+pLimitInclude+
+				  ". Multiple hypothesis corrected p-values with a limit of "+qLimitInclude+" are shown as qValues. Sorted by qValue."
+	} 
 	else 
 	{
-		if (direction == "up") {
-			caption = "List of genes significantly higher expressed in "+group.caseG+" samples compared to "+group.controlG+
-					  ' samples, where the $\log_2$ fold-change (fc)$ \geq '+fcLimitInclude+"$ and the minimum mean expression is above "+minExprInclude+
-					  " in at least one of the two groups. The highest p-value accepted is "+pLimitInclude+
-					  ". Multiple hypothesis corrected p-values with a limit of "+qLimitInclude+" are shown as qValues. Sorted by qValue."
-		} 
-		else 
-		{
-			caption = "List of genes significantly lower expressed in "+group.caseG+" samples compared to "+group.controlG+
-					  ' samples, where the $\log_2$ fold-change (fc)$ \leq -'+fcLimitInclude+"$ and the minimum mean expression is above "+minExprInclude+
-					  " in at least one of the two groups. The highest p-value accepted is "+pLimitInclude+
-					  ". Multiple hypothesis corrected p-values with a limit of "+qLimitInclude+" are shown as qValues. Sorted by qValue."
-		}
+		section = "Genes with lower expression in "+group.caseG+" than "+group.controlG+" samples"
+		caption = "List of genes significantly lower expressed in "+group.caseG+" samples compared to "+group.controlG+
+				  ' samples, where the $\log_2$ fold-change (fc)$ \leq -'+fcLimitInclude+"$ and the minimum mean expression is above "+minExprInclude+
+				  " in at least one of the two groups. The highest p-value accepted is "+pLimitInclude+
+				  ". Multiple hypothesis corrected p-values with a limit of "+qLimitInclude+" are shown as qValues. Sorted by qValue."
 	}
-
 
 	degReport = CSV2Latex
 	(
@@ -65,8 +72,8 @@ function getDEGTableReport
 		listCols     = "",
 		numberFormat = "fc=#0.0,qValue=#0.0E00,exprA=#0.0,exprB=#0.0",
 		pageBreak    = false,
-		section      = "Genes with higher expression in "+group.caseG+" than "+group.controlG+" samples",
-		sectionType  = "subsection"
+		section      = section,
+		sectionType  = sectionType
 	)
 	
 	return degReport.report

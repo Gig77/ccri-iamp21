@@ -72,7 +72,8 @@ function getDEGBoxPlots
 	CSV sampleGroupsSimple,
 	CSV geneAnnot,
 	string direction,
-	record group
+	record group,
+	string sectionType
 ) -> (Latex report)
 {
 	// which direction?
@@ -105,7 +106,7 @@ function getDEGBoxPlots
 		latex1=geneBoxplot.document, 
 		pagebreak=true, 
 		sectionTitle=sectionTitle, 
-		sectionType="subsection"
+		sectionType=sectionType
 	)
 	
 	return geneBoxplotReport

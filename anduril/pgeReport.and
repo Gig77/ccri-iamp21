@@ -19,7 +19,7 @@ function PGEReport
 		        "chromosomes with red tick marks. If found, significantly enriched chromosomal regions (p-value below "+pvalue+") are shown as blue segments below chromosomes. Segment color intensity " +
 		        "reflects statistical significance, from most significant (dark blue) to least significant (light blue). Enriched " +
 		        "regions may overlap in which case segments are drawn on top of each other.",
-		docker="cfrech/anduril-pge"
+		docker="biowaste:5000/anduril/pge"
 	)
 	
 	// translate Ensembl gene IDs into HGNC symbols using gene annotation table
@@ -63,8 +63,14 @@ function PGEReport
 	                The method used in this analysis, including statistical testing and filtering of overlapping regions, is described in De Preter et al. (2008).
 	                """
 	}
-	std.length(pgeReports)  
-    pgeReport = LatexCombiner(head=header, latex1=pge.document, latex2=enrichedRegions.report, pagebreak=true)
+
+    pgeReport = LatexCombiner
+    (
+    	head=header, 
+    	latex1=pge.document, 
+    	latex2=enrichedRegions.report, 
+    	pagebreak=true
+    )
 	
 	return pgeReport
 }

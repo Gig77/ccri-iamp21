@@ -1,22 +1,7 @@
 // Prepares a document describing the biological properties of the given set
 // of differentially expressed genes and the relationships between them.
 
-// Interesting GO topics for additional tables in the report of functional analysis
-goGroups = record
-(
-	apoptosis = record(title = "apoptosis", terms = std.concat(sep=",","GO:0006915")),  // apoptotic process 
-	cellcycle = record(title = "cell cycle", terms = std.concat(sep=",", "GO:0007049")),  // cell cycle
-	complement = record(title = "complement system", terms = std.concat
-		(sep=",", 
-			"GO:0001848", // complement binding
-            "GO:0002430", // complement receptor mediated signaling pathway
-            "GO:0006956", // complement activation
-            "GO:0097278"  // complement-dependent cytotoxicity
-        )),
-	hypoxia = record(title = "hypoxia", terms = std.concat(sep=",", "GO:0036293")),  // response to decreased oxygen levels
-	inflammation = record(title = "inflammation", terms = std.concat(sep=",", "GO:0006954")),  // inflammatory response
-	stimulation = record(title = "stimulation", terms = std.concat(sep=",", "GO:0031295"))  // T cell costimulation
-)
+go = INPUT(path="/opt/moksiskaan/pipeline/exec/output/goDB-in.obo")  // Gene Ontology~\cite{Ashburner2000}
 
 goGroupTableRefs = XrefLinkRule
 (
@@ -26,16 +11,20 @@ goGroupTableRefs = XrefLinkRule
 	@enabled   = useFunct
 )
 
-function FunctionalAnalysis(IDList        genes,
-                            ActivityTable status,
-                            string        title,
-                            record        latexList) ->
-                           (/* All outputs are appended to latexList */) {
+function FunctionalAnalysis
+(
+	IDList        genes,
+	ActivityTable status,
+	CSV			  geneGO,
+	record        goGroups,
+	string        title,
+	record        latexList
+) ->  (/* All outputs are appended to latexList */) {
     md = std.metadata()
     candiRep = CandidateReport(candidates        = genes,
                                status            = status,
                                moksiskaan        = moksiskaanInit.connection,
-                               ensembl           = ensembl,
+                               ensembl           = ensemblDb,
                                enrichmentTable   = enrichmentTable,
                                organism          = Organism_Homo_sapiens,
                                name              = title,
@@ -66,19 +55,19 @@ function FunctionalAnalysis(IDList        genes,
                                bioentityTypes    = BioentityType_gene,
                                maxGap            = 1,
                                cytoscape         = false,
-                               useStudies        = "",
+                               useStudies        = "*",
                                hideGaps          = false,
                                isolateGroupNames = false,
                                expand            = "connected",
                                statusFilter      = "NA",
                                goLimInput        = 0.01,
                                goLimModel        = -0.01,
-                               showCandidates    = true)
+                               showCandidates    = false)
     latexList[md.instanceName+"_candidates"] = candiRep.report
     functRep = CandidateReport(candidates        = genes,
                                status            = status,
                                moksiskaan        = moksiskaanInit.connection,
-                               ensembl           = ensembl,
+                               ensembl           = ensemblDb,
                                enrichmentTable   = enrichmentTable,
                                organism          = Organism_Homo_sapiens,
                                name              = title+" (biological function)",
@@ -103,20 +92,11 @@ function FunctionalAnalysis(IDList        genes,
                                showCandidates    = false)
 
     secTitle = "Selected GO gategories"
-    for name, group : goGroups {
-
-       goGroupGenes = GOSearch(bioAnnotation = geneGO,
-                           go            = go,
-                           goColumn      = "GO",
-                           numMatches    = 1,
-                           parentFilter  = true,
-                           terms         = group.terms,
-                           @enabled      = useFunct,
-                           @name         = "goGenes_"+name)
-       group['genes'] = goGroupGenes.hits
+    for goName, goGroup : goGroups 
+    {
 
        goGroupSelect = TableQuery(table1 = candiRep.bioAnnotation @require,
-                                  table2 = group.genes            @require,
+                                  table2 = goGroup.genes          @require,
                                   table3 = status                 @require,
                                   query  = """\
                                            SELECT G."entry"     AS "Ensembl",
@@ -131,20 +111,20 @@ function FunctionalAnalysis(IDList        genes,
                                            GROUP  BY G."entry", A.".GeneName", A.".GeneDesc", S."status"
                                            ORDER  BY "Gene"
                                            """,
-                                  @name  = "goGroupSelect_"+name)
+                                  @name  = "goGroupSelect_"+goName)
        goGroupTable = CSV2Latex(tabledata    = goGroupSelect,
                                 refs         = goGroupTableRefs,
-                                caption      = "Genes associated with "+group.title+" related Gene Ontology terms ("+
-                                               std.strReplace(group.terms,',',', ')+").",
+                                caption      = "Genes associated with "+goGroup.title+" related Gene Ontology terms ("+
+                                               std.strReplace(goGroup.terms,',',', ')+").",
                                 columns      = "status,Gene,Description,GO,name",
                                 colFormat    = "llp{8cm}p{1cm}p{6cm}",
                                 countRows    = true,
                                 dropMissing  = false,
                                 listCols     = "GO",
                                 section      = secTitle,
-                                @name        = "goGroupTable_"+name)
+                                @name        = "goGroupTable_"+goName)
        secTitle = ""
-       latexList[md.instanceName+"_"+name] = goGroupTable.report
+       latexList[md.instanceName+"_"+goName] = goGroupTable.report
     }
     latexList[md.instanceName+"_function"] = functRep.report
     return record()
@@ -152,12 +132,46 @@ function FunctionalAnalysis(IDList        genes,
 
 function createFunctionalAnalysisReport
 (
+	CSV	   geneGO,
 	record groups,
 	record degTables,
 	record gstats,
 	record degLst
-) -> () 
+) -> (Latex report) 
 {
+	// Interesting GO topics for additional tables in the report of functional analysis
+	goGroups = record
+	(
+		apoptosis = record(title = "apoptosis", terms = std.concat(sep=",","GO:0006915")),  // apoptotic process 
+		cellcycle = record(title = "cell cycle", terms = std.concat(sep=",", "GO:0007049")),  // cell cycle
+		complement = record(title = "complement system", terms = std.concat
+			(sep=",", 
+				"GO:0001848", // complement binding
+	            "GO:0002430", // complement receptor mediated signaling pathway
+	            "GO:0006956", // complement activation
+	            "GO:0097278"  // complement-dependent cytotoxicity
+	        )),
+		hypoxia = record(title = "hypoxia", terms = std.concat(sep=",", "GO:0036293")),  // response to decreased oxygen levels
+		inflammation = record(title = "inflammation", terms = std.concat(sep=",", "GO:0006954")),  // inflammatory response
+		stimulation = record(title = "stimulation", terms = std.concat(sep=",", "GO:0031295"))  // T cell costimulation
+	)
+
+	for goName, goGroup : goGroups 
+	{
+		goGroupGenes = GOSearch
+		(
+			bioAnnotation = geneGO,
+			go            = go,
+			goColumn      = "GO",
+			numMatches    = 1,
+			parentFilter  = true,
+			terms         = goGroup.terms,
+			@enabled      = useFunct,
+			@name         = "goGenes_"+goName
+		)
+		goGroup['genes'] = goGroupGenes.hits
+	}
+
 	funcReps  = record()
 	for ID, group : groups {
   		std.echo("***** Functional analysis for", ID, "comparison.")
@@ -174,7 +188,7 @@ function createFunctionalAnalysisReport
                 UNION
                 SELECT "ids" AS "Ensembl", -2 AS "status"
                 FROM   table2
-                WHERE  ("meanExpr'''+group.id+'''" < 0.02)
+                WHERE  ("meanExpr'''+ID+'''" < 0.02)
             ''',
             @enabled = useFunct,
             @name    = "statusTable_"+ID
@@ -185,6 +199,8 @@ function createFunctionalAnalysisReport
      	(
      		force genes  = degs,
             force status = statusTable,
+     		geneGO       = geneGO,
+     		goGroups     = goGroups,
             title        = group.caseG+" versus "+group.controlG,
             latexList    = funcReps,
             @name        = "geneFunction_"+ID
@@ -194,21 +210,13 @@ function createFunctionalAnalysisReport
 	funcReps["properties"] = Properties2Latex
 	(
 		moksiskaanInit.connection,
-		ensembl,
+		ensemblDb,
 		section     = "System configurations",
 		sectionType = "section",
 		hide        = "database.password"
 	)
 
 	functioLatex = LatexCombiner(array = funcReps)
-	functioReport = LatexPDF
-	(
-		document = functioLatex,
-		header   = docTemplate.header,
-		footer   = docTemplate.footer,
-		useRefs  = true,
-		verbose  = false
-	)
 	
-	return record()
+	return functioLatex
 }

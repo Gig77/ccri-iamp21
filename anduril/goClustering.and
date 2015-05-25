@@ -1,4 +1,3 @@
-geneGO = INPUT(path="/opt/moksiskaan/pipeline/exec/output/geneGO_9606.csv")  /** Gene Ontology annotations of all genes */
 similarityTable = INPUT(path="/opt/moksiskaan/pipeline/exec/output/GOSimilarity_9606.csv") // Moksiskaan specific similarities for the Gene ontology terms
 
 goTreeCuts = record
@@ -12,14 +11,16 @@ function getGOClusteringReport
 (
 	Matrix exprMatrix,
 	CSV    geneNames,
-	string ID
+	CSV	   geneGO,
+	string ID,
+	string sectionType
 ) -> (Latex report) 
 {
 	goAnnotations = TableQuery
 	(
-		table1 = geneGO    @require,
-		table2 = geneNames @require,
-		table3 = exprMatrix @require,
+		table1 = geneGO,
+		table2 = geneNames,
+		table3 = exprMatrix,
 		query  = """
 					SELECT O.*, A."Gene"
 					FROM   table1 O, table2 A, table3 E
@@ -47,7 +48,8 @@ function getGOClusteringReport
 		organism         = Organism_Homo_sapiens,
 		pvalues          = false,
 		showClusterNames = true,
-		title            = "GO clustering"
+		title            = "GO clustering",
+		sectionType      = sectionType
 	)
 	
 	return goHeatmap.report
