@@ -3,10 +3,10 @@ library(RColorBrewer)
 library(DESeq2)
 
 # get read counts
-files <- list.files(path="~/iamp/results/htseq/", pattern=".count$")
+files <- list.files(path="/mnt/projects/iamp/results/htseq/", pattern=".count$")
 names <- sub(".*CV_([^_]+).*", "\\1", files)
 samples <- data.frame(name=names, file=files, stringsAsFactors=F)
-cds <- DESeqDataSetFromHTSeqCount(sampleTable = samples, directory="~/iamp/results/htseq/", design=~1)
+cds <- DESeqDataSetFromHTSeqCount(sampleTable = samples, directory="/mnt/projects/iamp/results/htseq/", design=~1)
 cds <- estimateSizeFactors(cds)
 counts <- round(counts(cds, normalized=T))
 
@@ -39,7 +39,7 @@ length(common)
 library(EDASeq)
 data <- newSeqExpressionSet(counts=counts.expressed[common,], featureData=feature[common,], phenoData=data.frame(lane=lane, plex=plex, row.names=colnames(counts.expressed)))
 
-pdf("~/iamp/results/gcbias.pdf", width=10, height=15)
+pdf("/mnt/projects/iamp/results/gcbias.pdf", width=10, height=15)
 par(mfrow=c(2,1))
 
 # plot normalized expression by sample

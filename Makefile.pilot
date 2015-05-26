@@ -3,7 +3,7 @@ SHELL=/bin/bash  # required to make pipefail work
 .SECONDARY:      # do not delete any intermediate files
 LOG = perl -ne 'use POSIX qw(strftime); $$|=1; print strftime("%F %02H:%02M:%S ", localtime), $$ARGV[0], "$@: $$_";'
 
-PROJECT_HOME=~/iamp
+PROJECT_HOME=/mnt/projects/iamp
 TRIM_BEFORE_BASE=8
 
 # download BAM files from CSF
@@ -28,8 +28,8 @@ SAMPLES=18529_GTCCGC_C4VVVACXX_1_20140704B_20140704 \
 
 all: gsnap htseq qc blast fastqc
 
-include ~/generic/scripts/rna-seq/gsnap.mk
-include ~/generic/scripts/rna-seq/htseq.mk
-include ~/generic/scripts/rna-seq/qc.mk
-include ~/generic/scripts/rna-seq/blast.mk
-include ~/generic/scripts/rna-seq/fastqc.mk
+include /mnt/projects/generic/scripts/rna-seq/gsnap.mk
+include /mnt/projects/generic/scripts/rna-seq/htseq.mk
+include /mnt/projects/generic/scripts/rna-seq/qc.mk
+include /mnt/projects/generic/scripts/rna-seq/blast.mk
+include /mnt/projects/generic/scripts/rna-seq/fastqc.mk

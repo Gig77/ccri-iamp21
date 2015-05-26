@@ -32,7 +32,7 @@ counts.scaled.noCD19 <- t(scale(t(as.matrix(counts.norm.noCD19))))
 
 # annotate genes with Ensembl biomart
 #---
-biomartfile <- "~/generic/data/ensembl/genes.GRCh37v75.biomart.RData"
+biomartfile <- "/mnt/projects/generic/data/ensembl/genes.GRCh37v75.biomart.RData"
 load(biomartfile)
 
 library(reshape)
@@ -277,6 +277,6 @@ plotTracks(c(itrack, gtrack, biomTrack), cex.title=0.9)
 
 #cntrack@range@elementMetadata@listData$id <- gr$sample.name
 
-#pdf("~/p2ry8-crlf2/results/exomeCopy/IKZF1.pdf")
+#pdf("/mnt/projects/p2ry8-crlf2/results/exomeCopy/IKZF1.pdf")
 #plotTracks(list(itrack, gtrack, biomTrack, cntrack), from=start, to=end)
 #dev.off()

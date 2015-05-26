@@ -1,18 +1,18 @@
 library(RColorBrewer)
 library("gplots")
 
-iAMP.vs.ER <- read.delim("~/iamp/results/deseq/iAMP-vs-ER.tsv")
-iAMP.vs.PC <- read.delim("~/iamp/results/deseq/iAMP-vs-PC.tsv")
-ER.vs.PC <- read.delim("~/iamp/results/deseq/ER-vs-PC.tsv")
-iAMP.vs.immature <- read.delim("~/iamp/results/deseq/iAMP-vs-immature.tsv")
-PC.vs.immature <- read.delim("~/iamp/results/deseq/PC-vs-immature.tsv")
-ER.vs.immature <- read.delim("~/iamp/results/deseq/ER-vs-immature.tsv")
-iAMP.vs.preB <- read.delim("~/iamp/results/deseq/iAMP-vs-preB.tsv")
-PC.vs.preB <- read.delim("~/iamp/results/deseq/PC-vs-preB.tsv")
-ER.vs.preB <- read.delim("~/iamp/results/deseq/ER-vs-preB.tsv")
-iAMP.vs.mature <- read.delim("~/iamp/results/deseq/iAMP-vs-mature.tsv")
-PC.vs.mature <- read.delim("~/iamp/results/deseq/PC-vs-mature.tsv")
-ER.vs.mature <- read.delim("~/iamp/results/deseq/ER-vs-mature.tsv")
+iAMP.vs.ER <- read.delim("/mnt/projects/iamp/results/deseq/iAMP-vs-ER.tsv")
+iAMP.vs.PC <- read.delim("/mnt/projects/iamp/results/deseq/iAMP-vs-PC.tsv")
+ER.vs.PC <- read.delim("/mnt/projects/iamp/results/deseq/ER-vs-PC.tsv")
+iAMP.vs.immature <- read.delim("/mnt/projects/iamp/results/deseq/iAMP-vs-immature.tsv")
+PC.vs.immature <- read.delim("/mnt/projects/iamp/results/deseq/PC-vs-immature.tsv")
+ER.vs.immature <- read.delim("/mnt/projects/iamp/results/deseq/ER-vs-immature.tsv")
+iAMP.vs.preB <- read.delim("/mnt/projects/iamp/results/deseq/iAMP-vs-preB.tsv")
+PC.vs.preB <- read.delim("/mnt/projects/iamp/results/deseq/PC-vs-preB.tsv")
+ER.vs.preB <- read.delim("/mnt/projects/iamp/results/deseq/ER-vs-preB.tsv")
+iAMP.vs.mature <- read.delim("/mnt/projects/iamp/results/deseq/iAMP-vs-mature.tsv")
+PC.vs.mature <- read.delim("/mnt/projects/iamp/results/deseq/PC-vs-mature.tsv")
+ER.vs.mature <- read.delim("/mnt/projects/iamp/results/deseq/ER-vs-mature.tsv")
 
 cols.keep <- c("id", "hgnc_symbol", "description", "chromosome_name", "start_position", "end_position", "log2FoldChange", "padj")
 cols.merge <- c("id", "hgnc_symbol", "description", "chromosome_name", "start_position", "end_position")
@@ -72,37 +72,37 @@ plot.heatmap <- function(data, cexCol=0.9, cexRow=0.9, sigLevel, minFC, title=""
 }
 
 # ER UP
-pdf("~/iamp/results/genes-heatmap-ER-up.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/genes-heatmap-ER-up.pdf", height=15, width=10)
 minsig <- 1e-10 ; minfc <- 2 
 plot.heatmap(merged[merged$padj.iAMP.vs.ER <= minsig & merged$padj.ER.vs.PC <= minsig & merged$log2FoldChange.iAMP.vs.ER <= -minfc & merged$log2FoldChange.ER.vs.PC >= minfc, cols.fc], cexRow=0.7, sigLevel=minsig, minFC=minfc, title="ER UP")
 dev.off()
 
 # ER DN
-pdf("~/iamp/results/genes-heatmap-ER-dn.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/genes-heatmap-ER-dn.pdf", height=15, width=10)
 minsig <- 1e-5 ; minfc <- 2 
 plot.heatmap(merged[merged$padj.iAMP.vs.ER <= minsig & merged$padj.ER.vs.PC <= minsig & merged$log2FoldChange.iAMP.vs.ER >= minfc & merged$log2FoldChange.ER.vs.PC <= -minfc, cols.fc], cexRow=0.7, sigLevel=minsig, minFC=minfc, title="ER DN")
 dev.off()
 
 # iAMP UP
-pdf("~/iamp/results/genes-heatmap-iAMP-up.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/genes-heatmap-iAMP-up.pdf", height=15, width=10)
 minsig <- 1e-3 ; minfc <- 1 
 plot.heatmap(merged[merged$padj.iAMP.vs.ER <= minsig & merged$padj.iAMP.vs.PC <= minsig & merged$log2FoldChange.iAMP.vs.ER >= minfc & merged$log2FoldChange.iAMP.vs.PC >= minfc, cols.fc], cexRow=0.7, sigLevel=minsig, minFC=minfc, title="iAMP UP")
 dev.off()
 
 # iAMP DN
-pdf("~/iamp/results/genes-heatmap-iAMP-dn.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/genes-heatmap-iAMP-dn.pdf", height=15, width=10)
 minsig <- 1e-2 ; minfc <- 1 
 plot.heatmap(merged[merged$padj.iAMP.vs.ER <= minsig & merged$padj.iAMP.vs.PC <= minsig & merged$log2FoldChange.iAMP.vs.ER <= -minfc & merged$log2FoldChange.iAMP.vs.PC <= -minfc, cols.fc], cexRow=0.7, sigLevel=minsig, minFC=minfc, title="iAMP DN")
 dev.off()
 
 # PC UP
-pdf("~/iamp/results/genes-heatmap-PC-up.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/genes-heatmap-PC-up.pdf", height=15, width=10)
 minsig <- 1e-4 ; minfc <- 1 
 plot.heatmap(merged[merged$padj.iAMP.vs.PC <= minsig & merged$padj.ER.vs.PC <= minsig & merged$log2FoldChange.iAMP.vs.PC <= -minfc & merged$log2FoldChange.ER.vs.PC <= -minfc, cols.fc], cexRow=0.7, sigLevel=minsig, minFC=minfc, title="PC UP")
 dev.off()
 
 # PC DN
-pdf("~/iamp/results/genes-heatmap-PC-dn.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/genes-heatmap-PC-dn.pdf", height=15, width=10)
 minsig <- 1e-3 ; minfc <- 1 
 plot.heatmap(merged[merged$padj.iAMP.vs.PC <= minsig & merged$padj.ER.vs.PC <= minsig & merged$log2FoldChange.iAMP.vs.PC >= minfc & merged$log2FoldChange.ER.vs.PC >= minfc, cols.fc], cexRow=0.7, sigLevel=minsig, minFC=minfc, title="PC DN")
 dev.off()

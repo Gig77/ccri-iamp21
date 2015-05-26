@@ -1,30 +1,30 @@
 library(RColorBrewer)
 library("gplots")
 
-iAMP.vs.ER.up <- read.delim(paste0("~/iamp/results/gsea/iAMP_vs_ER.gsea/", list.files(path="~/iamp/results/gsea/iAMP_vs_ER.gsea", pattern="gsea_report_for_na_pos.*xls")))
-iAMP.vs.ER.down <- read.delim(paste0("~/iamp/results/gsea/iAMP_vs_ER.gsea/", list.files(path="~/iamp/results/gsea/iAMP_vs_ER.gsea", pattern="gsea_report_for_na_neg.*xls")))
-iAMP.vs.PC.up <- read.delim(paste0("~/iamp/results/gsea/iAMP_vs_PC.gsea/", list.files(path="~/iamp/results/gsea/iAMP_vs_PC.gsea", pattern="gsea_report_for_na_pos.*xls")))
-iAMP.vs.PC.down <- read.delim(paste0("~/iamp/results/gsea/iAMP_vs_PC.gsea/", list.files(path="~/iamp/results/gsea/iAMP_vs_PC.gsea", pattern="gsea_report_for_na_neg.*xls")))
-ER.vs.PC.up <- read.delim(paste0("~/iamp/results/gsea/ER_vs_PC.gsea/", list.files(path="~/iamp/results/gsea/ER_vs_PC.gsea", pattern="gsea_report_for_na_pos.*xls")))
-ER.vs.PC.down <- read.delim(paste0("~/iamp/results/gsea/ER_vs_PC.gsea/", list.files(path="~/iamp/results/gsea/ER_vs_PC.gsea", pattern="gsea_report_for_na_neg.*xls")))
-iAMP.vs.immature.up <- read.delim(paste0("~/iamp/results/gsea/iAMP_vs_immature.gsea/", list.files(path="~/iamp/results/gsea/iAMP_vs_immature.gsea", pattern="gsea_report_for_na_pos.*xls")))
-iAMP.vs.immature.down <- read.delim(paste0("~/iamp/results/gsea/iAMP_vs_immature.gsea/", list.files(path="~/iamp/results/gsea/iAMP_vs_immature.gsea", pattern="gsea_report_for_na_neg.*xls")))
-PC.vs.immature.up <- read.delim(paste0("~/iamp/results/gsea/PC_vs_immature.gsea/", list.files(path="~/iamp/results/gsea/PC_vs_immature.gsea", pattern="gsea_report_for_na_pos.*xls")))
-PC.vs.immature.down <- read.delim(paste0("~/iamp/results/gsea/PC_vs_immature.gsea/", list.files(path="~/iamp/results/gsea/PC_vs_immature.gsea", pattern="gsea_report_for_na_neg.*xls")))
-ER.vs.immature.up <- read.delim(paste0("~/iamp/results/gsea/ER_vs_immature.gsea/", list.files(path="~/iamp/results/gsea/ER_vs_immature.gsea", pattern="gsea_report_for_na_pos.*xls")))
-ER.vs.immature.down <- read.delim(paste0("~/iamp/results/gsea/ER_vs_immature.gsea/", list.files(path="~/iamp/results/gsea/ER_vs_immature.gsea", pattern="gsea_report_for_na_neg.*xls")))
-iAMP.vs.preB.up <- read.delim(paste0("~/iamp/results/gsea/iAMP_vs_preB.gsea/", list.files(path="~/iamp/results/gsea/iAMP_vs_preB.gsea", pattern="gsea_report_for_na_pos.*xls")))
-iAMP.vs.preB.down <- read.delim(paste0("~/iamp/results/gsea/iAMP_vs_preB.gsea/", list.files(path="~/iamp/results/gsea/iAMP_vs_preB.gsea", pattern="gsea_report_for_na_neg.*xls")))
-PC.vs.preB.up <- read.delim(paste0("~/iamp/results/gsea/PC_vs_preB.gsea/", list.files(path="~/iamp/results/gsea/PC_vs_preB.gsea", pattern="gsea_report_for_na_pos.*xls")))
-PC.vs.preB.down <- read.delim(paste0("~/iamp/results/gsea/PC_vs_preB.gsea/", list.files(path="~/iamp/results/gsea/PC_vs_preB.gsea", pattern="gsea_report_for_na_neg.*xls")))
-ER.vs.preB.up <- read.delim(paste0("~/iamp/results/gsea/ER_vs_preB.gsea/", list.files(path="~/iamp/results/gsea/ER_vs_preB.gsea", pattern="gsea_report_for_na_pos.*xls")))
-ER.vs.preB.down <- read.delim(paste0("~/iamp/results/gsea/ER_vs_preB.gsea/", list.files(path="~/iamp/results/gsea/ER_vs_preB.gsea", pattern="gsea_report_for_na_neg.*xls")))
-iAMP.vs.mature.up <- read.delim(paste0("~/iamp/results/gsea/iAMP_vs_mature.gsea/", list.files(path="~/iamp/results/gsea/iAMP_vs_mature.gsea", pattern="gsea_report_for_na_pos.*xls")))
-iAMP.vs.mature.down <- read.delim(paste0("~/iamp/results/gsea/iAMP_vs_mature.gsea/", list.files(path="~/iamp/results/gsea/iAMP_vs_mature.gsea", pattern="gsea_report_for_na_neg.*xls")))
-PC.vs.mature.up <- read.delim(paste0("~/iamp/results/gsea/PC_vs_mature.gsea/", list.files(path="~/iamp/results/gsea/PC_vs_mature.gsea", pattern="gsea_report_for_na_pos.*xls")))
-PC.vs.mature.down <- read.delim(paste0("~/iamp/results/gsea/PC_vs_mature.gsea/", list.files(path="~/iamp/results/gsea/PC_vs_mature.gsea", pattern="gsea_report_for_na_neg.*xls")))
-ER.vs.mature.up <- read.delim(paste0("~/iamp/results/gsea/ER_vs_mature.gsea/", list.files(path="~/iamp/results/gsea/ER_vs_mature.gsea", pattern="gsea_report_for_na_pos.*xls")))
-ER.vs.mature.down <- read.delim(paste0("~/iamp/results/gsea/ER_vs_mature.gsea/", list.files(path="~/iamp/results/gsea/ER_vs_mature.gsea", pattern="gsea_report_for_na_neg.*xls")))
+iAMP.vs.ER.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/iAMP_vs_ER.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/iAMP_vs_ER.gsea", pattern="gsea_report_for_na_pos.*xls")))
+iAMP.vs.ER.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/iAMP_vs_ER.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/iAMP_vs_ER.gsea", pattern="gsea_report_for_na_neg.*xls")))
+iAMP.vs.PC.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/iAMP_vs_PC.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/iAMP_vs_PC.gsea", pattern="gsea_report_for_na_pos.*xls")))
+iAMP.vs.PC.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/iAMP_vs_PC.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/iAMP_vs_PC.gsea", pattern="gsea_report_for_na_neg.*xls")))
+ER.vs.PC.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/ER_vs_PC.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/ER_vs_PC.gsea", pattern="gsea_report_for_na_pos.*xls")))
+ER.vs.PC.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/ER_vs_PC.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/ER_vs_PC.gsea", pattern="gsea_report_for_na_neg.*xls")))
+iAMP.vs.immature.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/iAMP_vs_immature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/iAMP_vs_immature.gsea", pattern="gsea_report_for_na_pos.*xls")))
+iAMP.vs.immature.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/iAMP_vs_immature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/iAMP_vs_immature.gsea", pattern="gsea_report_for_na_neg.*xls")))
+PC.vs.immature.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/PC_vs_immature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/PC_vs_immature.gsea", pattern="gsea_report_for_na_pos.*xls")))
+PC.vs.immature.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/PC_vs_immature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/PC_vs_immature.gsea", pattern="gsea_report_for_na_neg.*xls")))
+ER.vs.immature.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/ER_vs_immature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/ER_vs_immature.gsea", pattern="gsea_report_for_na_pos.*xls")))
+ER.vs.immature.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/ER_vs_immature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/ER_vs_immature.gsea", pattern="gsea_report_for_na_neg.*xls")))
+iAMP.vs.preB.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/iAMP_vs_preB.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/iAMP_vs_preB.gsea", pattern="gsea_report_for_na_pos.*xls")))
+iAMP.vs.preB.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/iAMP_vs_preB.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/iAMP_vs_preB.gsea", pattern="gsea_report_for_na_neg.*xls")))
+PC.vs.preB.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/PC_vs_preB.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/PC_vs_preB.gsea", pattern="gsea_report_for_na_pos.*xls")))
+PC.vs.preB.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/PC_vs_preB.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/PC_vs_preB.gsea", pattern="gsea_report_for_na_neg.*xls")))
+ER.vs.preB.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/ER_vs_preB.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/ER_vs_preB.gsea", pattern="gsea_report_for_na_pos.*xls")))
+ER.vs.preB.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/ER_vs_preB.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/ER_vs_preB.gsea", pattern="gsea_report_for_na_neg.*xls")))
+iAMP.vs.mature.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/iAMP_vs_mature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/iAMP_vs_mature.gsea", pattern="gsea_report_for_na_pos.*xls")))
+iAMP.vs.mature.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/iAMP_vs_mature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/iAMP_vs_mature.gsea", pattern="gsea_report_for_na_neg.*xls")))
+PC.vs.mature.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/PC_vs_mature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/PC_vs_mature.gsea", pattern="gsea_report_for_na_pos.*xls")))
+PC.vs.mature.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/PC_vs_mature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/PC_vs_mature.gsea", pattern="gsea_report_for_na_neg.*xls")))
+ER.vs.mature.up <- read.delim(paste0("/mnt/projects/iamp/results/gsea/ER_vs_mature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/ER_vs_mature.gsea", pattern="gsea_report_for_na_pos.*xls")))
+ER.vs.mature.down <- read.delim(paste0("/mnt/projects/iamp/results/gsea/ER_vs_mature.gsea/", list.files(path="/mnt/projects/iamp/results/gsea/ER_vs_mature.gsea", pattern="gsea_report_for_na_neg.*xls")))
 
 cols.keep <- c(1, 5:11)
 cols.merge <- c(1)
@@ -135,70 +135,70 @@ plot.heatmap <- function(data, cexCol=0.9, cexRow=0.9, sigLevel=0.02, minNES=NA,
 }
 
 # PATHWAYS
-pdf("~/iamp/results/gsea-heatmap.pathways.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea-heatmap.pathways.pdf", height=15, width=10)
 geneset <- grep("^(REACTOME|KEGG|PID_)", rownames(merged), perl=T, value=TRUE)
 genesets <- geneset
 plot.heatmap(merged[geneset,], cexRow=0.7, sigLevel=0.001, title="Pathways")
 dev.off()
 
 # UP
-pdf("~/iamp/results/gsea-heatmap.up.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea-heatmap.up.pdf", height=15, width=10)
 geneset <- grep("_UP$", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], cexRow=0.5, sigLevel=0.001, minNES=7, title="UP genesets")
 dev.off()
 
 # DOWN
-pdf("~/iamp/results/gsea-heatmap.dn.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea-heatmap.dn.pdf", height=15, width=10)
 geneset <- grep("_DN$", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], cexRow=0.5, sigLevel=0.001, minNES=7, title="DOWN genesets")
 dev.off()
 
 # MIR TARGETS
-pdf("~/iamp/results/gsea-heatmap.mir.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea-heatmap.mir.pdf", height=15, width=10)
 geneset <- grep("MIR-", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], sigLevel=0.05, title="MiR targets")
 dev.off()
 
 # CHROMOSOME POSITION
-pdf("~/iamp/results/gsea-heatmap.chr.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea-heatmap.chr.pdf", height=15, width=10)
 geneset <- grep("^CHR[\\dXY]", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], title="Chromosome location")
 dev.off()
 
 # SIGNALING
-pdf("~/iamp/results/gsea-heatmap.signaling.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea-heatmap.signaling.pdf", height=15, width=10)
 geneset <- grep("SIGNALING", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], title="Signaling")
 dev.off()
 
 # PROMOTER MOTIF
-pdf("~/iamp/results/gsea-heatmap.promoter-motif.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea-heatmap.promoter-motif.pdf", height=15, width=10)
 geneset <- grep("V\\$", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], cexRow=0.5, sigLevel=0.01, title="Motif in promoter region")
 dev.off()
 
 # MORF expression compendium
-pdf("~/iamp/results/gsea-heatmap.morf.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea-heatmap.morf.pdf", height=15, width=10)
 geneset <- grep("^MORF_", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], cexRow=0.5, title="MORF neighborhood")
 dev.off()
 
 # MODULES
-pdf("~/iamp/results/gsea-heatmap.module.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea-heatmap.module.pdf", height=15, width=10)
 geneset <- grep("^MODULE_", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], cexRow=0.5, sigLevel=0.001, title="Modules")
 dev.off()
 
 # OTHER
-pdf("~/iamp/results/gsea-heatmap.other.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea-heatmap.other.pdf", height=15, width=10)
 geneset <- rownames(merged)[!rownames(merged) %in% genesets]
 plot.heatmap(merged[geneset,], cexRow=0.7, sigLevel=0.0001, minNES=7, title="Other")
 dev.off()

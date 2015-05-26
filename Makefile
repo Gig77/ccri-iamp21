@@ -3,7 +3,7 @@ SHELL=/bin/bash  # required to make pipefail work
 .SECONDARY:      # do not delete any intermediate files
 LOG = perl -ne 'use POSIX qw(strftime); $$|=1; print strftime("%F %02H:%02M:%S ", localtime), $$ARGV[0], "$@: $$_";'
 
-PROJECT_HOME=~/iamp
+PROJECT_HOME=/mnt/projects/iamp
 TRIM_BEFORE_BASE=1
 
 ER=C57C3ACXX_CV_C1_14s006573-1-1_Vesely_lane214s006573_sequence \
@@ -56,7 +56,7 @@ COMMA := ,
 #all: gsnap htseq qc blast fastqc
 all: gsnap htseq qc fastqc diffexp gsea
 
-include ~/generic/scripts/rna-seq/default.mk
+include /mnt/projects/generic/scripts/rna-seq/default.mk
 
 #---------------
 # DIFFERENTIALLY EXPRESSED GENES
@@ -69,30 +69,30 @@ deseq/iAMP21.diff-exp-genes.deseq2.merged.pairwise.tsv: deseq/iAMP-vs-PC.tsv des
          										  deseq/ER-vs-immature.tsv deseq/ER-vs-preB.tsv deseq/ER-vs-mature.tsv \
                                                   deseq/PC-vs-immature.tsv deseq/PC-vs-preB.tsv deseq/PC-vs-mature.tsv \
                                                   deseq/iAMP-vs-immature.tsv deseq/iAMP-vs-preB.tsv deseq/iAMP-vs-mature.tsv 
-	Rscript ~/iamp/scripts/merge-pairwise.R
+	Rscript /mnt/projects/iamp/scripts/merge-pairwise.R
 	mv $@.part $@
 	
-deseq/iAMP-vs-PC.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/iAMP-vs-PC.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(IAMP),$S.count)) \
 		--control $(subst $(SPACE),$(COMMA),$(foreach S,$(PC),$S.count)) \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
 		--output-tsv $@.part
 	mv $@.part $@
 
-deseq/iAMP-vs-ER.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/iAMP-vs-ER.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(IAMP),$S.count)) \
 		--control $(subst $(SPACE),$(COMMA),$(foreach S,$(ER),$S.count)) \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
 		--output-tsv $@.part
 	mv $@.part $@
 
-deseq/ER-vs-PC.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/ER-vs-PC.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(ER),$S.count)) \
 		--control $(subst $(SPACE),$(COMMA),$(foreach S,$(PC),$S.count)) \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
@@ -102,27 +102,27 @@ deseq/ER-vs-PC.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES)
 #---------------------
 # ER vs. normal B-cell
 #---------------------
-deseq/ER-vs-immature.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/ER-vs-immature.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(ER),$S.count)) \
 		--control $(S1).count \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
 		--output-tsv $@.part
 	mv $@.part $@
 
-deseq/ER-vs-preB.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/ER-vs-preB.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(ER),$S.count)) \
 		--control $(S2).count \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
 		--output-tsv $@.part
 	mv $@.part $@
 
-deseq/ER-vs-mature.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/ER-vs-mature.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(ER),$S.count)) \
 		--control $(S3).count \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
@@ -132,27 +132,27 @@ deseq/ER-vs-mature.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMP
 #---------------------
 # PC vs. normal B-cell
 #---------------------
-deseq/PC-vs-immature.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/PC-vs-immature.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(PC),$S.count)) \
 		--control $(S1).count \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
 		--output-tsv $@.part
 	mv $@.part $@
 
-deseq/PC-vs-preB.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/PC-vs-preB.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(PC),$S.count)) \
 		--control $(S2).count \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
 		--output-tsv $@.part
 	mv $@.part $@
 
-deseq/PC-vs-mature.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/PC-vs-mature.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(PC),$S.count)) \
 		--control $(S3).count \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
@@ -162,27 +162,27 @@ deseq/PC-vs-mature.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMP
 #---------------------
 # iAMP21 vs. normal B-cell
 #---------------------
-deseq/iAMP-vs-immature.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/iAMP-vs-immature.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(IAMP),$S.count)) \
 		--control $(S1).count \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
 		--output-tsv $@.part
 	mv $@.part $@
 
-deseq/iAMP-vs-preB.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/iAMP-vs-preB.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(IAMP),$S.count)) \
 		--control $(S2).count \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
 		--output-tsv $@.part
 	mv $@.part $@
 
-deseq/iAMP-vs-mature.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
+deseq/iAMP-vs-mature.tsv: /mnt/projects/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SAMPLES), htseq/$S.count)
 	mkdir -p deseq
-	Rscript ~/generic/scripts/rna-seq/diff-exp.R \
+	Rscript /mnt/projects/generic/scripts/rna-seq/diff-exp.R \
 		--experiment $(subst $(SPACE),$(COMMA),$(foreach S,$(IAMP),$S.count)) \
 		--control $(S3).count \
 		--name-subst-pattern ".*CV_(.\\d+)_.*" \
@@ -197,8 +197,8 @@ deseq/iAMP-vs-mature.tsv: ~/generic/scripts/rna-seq/diff-exp.R $(foreach S, $(SA
 .PHONY: gsea
 gsea: gsea-heatmap.chr.pdf
 
-gsea-heatmap.chr.pdf: gsea/iAMP_vs_PC.gsea gsea/iAMP_vs_ER.gsea gsea/ER_vs_PC.gsea gsea/ER_vs_immature.gsea gsea/ER_vs_preB.gsea gsea/ER_vs_mature.gsea gsea/PC_vs_immature.gsea gsea/PC_vs_preB.gsea gsea/PC_vs_mature.gsea gsea/iAMP_vs_immature.gsea gsea/iAMP_vs_preB.gsea gsea/iAMP_vs_mature.gsea ~/iamp/scripts/gsea-heatmap.R
-	Rscript ~/iamp/scripts/gsea-heatmap.R
+gsea-heatmap.chr.pdf: gsea/iAMP_vs_PC.gsea gsea/iAMP_vs_ER.gsea gsea/ER_vs_PC.gsea gsea/ER_vs_immature.gsea gsea/ER_vs_preB.gsea gsea/ER_vs_mature.gsea gsea/PC_vs_immature.gsea gsea/PC_vs_preB.gsea gsea/PC_vs_mature.gsea gsea/iAMP_vs_immature.gsea gsea/iAMP_vs_preB.gsea gsea/iAMP_vs_mature.gsea /mnt/projects/iamp/scripts/gsea-heatmap.R
+	Rscript /mnt/projects/iamp/scripts/gsea-heatmap.R
 
 gsea/%.gsea: gsea/%.rnk 
 	mkdir -p gsea
@@ -218,9 +218,9 @@ gsea/%.gsea: gsea/%.rnk
 	rename 's/\.GseaPreranked\.\d+$$//' $@.*
 	
 .SECONDEXPANSION:
-gsea/%.rnk: deseq/$$(subst _,-,%).tsv ~/generic/scripts/enrichment/deseq2gsea.R
+gsea/%.rnk: deseq/$$(subst _,-,%).tsv /mnt/projects/generic/scripts/enrichment/deseq2gsea.R
 	mkdir -p gsea 
-	Rscript ~/generic/scripts/enrichment/deseq2gsea.R \
+	Rscript /mnt/projects/generic/scripts/enrichment/deseq2gsea.R \
 		--deseq2-input-file $< \
 		--rnk-output-file $@.part \
 		--min-pvalue 0.5
