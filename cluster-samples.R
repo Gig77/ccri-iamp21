@@ -76,7 +76,7 @@ ens2sym <- merge(ens2sym, genes[,c("ensembl_gene_id", "hgnc_symbol")], all.x=T)
 ens2sym <- ens2sym[!duplicated(ens2sym$ensembl_gene_id),]
 
 # validated targets
-validated <- read.delim("/mnt/projects/iamp/results/miRecords.v4.validatedTargets.txt")
+validated <- read.delim("/mnt/projects/iamp/data/miRecords/miRecords.validatedTargets.txt")
 validated.hgnc <- as.character(unique(validated[grepl("let-7c|miR-99a|miR-125b", validated$miRNA_mature_ID),"symbol"]))
 validated.ensembl <- ens2sym[ens2sym$hgnc_symbol %in% validated.hgnc, "ensembl_gene_id"]
 
@@ -88,7 +88,8 @@ heatmap.2(mat, col=hmcol, dendrogram="both", trace="none", margin=c(10, 6))
 dev.off()
 
 # validated + predicted targets
-predicted <- read.delim("/mnt/projects/iamp/results/miRecords.v4.predictedTargets.by5programs.txt")
+predicted <- read.delim("/mnt/projects/iamp/data/miRecords/miRecords.predictedTargets.txt")
+predicted <- predicted[predicted$databases >= 5,]
 predicted.hgnc <- as.character(unique(predicted[grepl("let-7c|miR-99a|miR-125b", predicted$miRNA.ID),"Symbol"]))
 predicted.ensembl <- ens2sym[ens2sym$hgnc_symbol %in% predicted.hgnc, "ensembl_gene_id"]
 

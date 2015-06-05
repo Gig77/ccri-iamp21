@@ -29,6 +29,7 @@ counts.norm.noCD19 <- counts.norm[!names(counts.norm) %in% c("S1", "S2", "S3")] 
 
 # scale data matrix
 counts.scaled.noCD19 <- t(scale(t(as.matrix(counts.norm.noCD19))))
+counts.scaled.withCD19 <- t(scale(t(as.matrix(counts.norm))))
 
 # annotate genes with Ensembl biomart
 #---
@@ -42,8 +43,9 @@ genes.dedup <- cast(genes[,c("ensembl_gene_id", "hgnc_symbol")], formula=ensembl
 names(genes.dedup) <- c("ensembl_gene_id", "hgnc_symbol")
 genes <- merge(genes.dedup, unique(genes[,names(genes)[!names(genes) %in% "hgnc_symbol"]]), by="ensembl_gene_id")
 
-counts.ann <- merge(genes[,c("ensembl_gene_id", "hgnc_symbol", "chromosome_name", "start_position", "end_position")], counts.scaled.noCD19, by.x="ensembl_gene_id", by.y="row.names")
+counts.ann <- merge(genes[,c("ensembl_gene_id", "hgnc_symbol", "chromosome_name", "start_position", "end_position")], counts.scaled.withCD19, by.x="ensembl_gene_id", by.y="row.names")
 counts.ann$chromosome_name <- paste0("chr", counts.ann$chromosome_name)
+counts.ann$hgnc_symbol <- as.character(counts.ann$hgnc_symbol)
 
 gr <- makeGRangesFromDataFrame(counts.ann,
 		keep.extra.columns=TRUE,
@@ -52,10 +54,71 @@ gr <- makeGRangesFromDataFrame(counts.ann,
 		seqnames.field=c("chromosome_name"),
 		start.field=c("start_position"),
 		end.field=c("end_position"))
-gr <- sort(gr)
 gr.data <- gr[,names(mcols(gr))[!names(mcols(gr)) %in% c("ensembl_gene_id", "hgnc_symbol")]]
 
-subtypes <- as.factor(as.character(annotation$Subtype[match(names(mcols(gr.data)), annotation$Name)]))
+# mask centromeres
+#{
+#	centroms <- data.frame(chr=character(0), start=numeric(0), end=numeric(0), stringsAsFactors=F)
+#	centroms[nrow(centroms)+1,] <- c("chr1", 121500000, 142618768)
+#	centroms[nrow(centroms)+1,] <- c("chr2", 90500000, 96800000)
+#	centroms[nrow(centroms)+1,] <- c("chr3", 87900000, 94225609)
+#	centroms[nrow(centroms)+1,] <- c("chr4", 48200000, 52700000)
+#	centroms[nrow(centroms)+1,] <- c("chr5", 46100000, 52700000)
+#	centroms[nrow(centroms)+1,] <- c("chr6", 58700000, 63921350)
+#	centroms[nrow(centroms)+1,] <- c("chr7", 58000000, 62574012)
+#	centroms[nrow(centroms)+1,] <- c("chr8", 43100000, 48083333)
+#	centroms[nrow(centroms)+1,] <- c("chr9", 47300000, 66457284)
+#	centroms[nrow(centroms)+1,] <- c("chr10", 38000000, 42827313)
+#	centroms[nrow(centroms)+1,] <- c("chr11", 51600000, 55700000)
+#	centroms[nrow(centroms)+1,] <- c("chr12", 33300000, 38200000)
+#	centroms[nrow(centroms)+1,] <- c("chr13", 16300000, 19244000)
+#	centroms[nrow(centroms)+1,] <- c("chr14", 16100000, 19100000)
+#	centroms[nrow(centroms)+1,] <- c("chr15", 15800000, 20178034)
+#	centroms[nrow(centroms)+1,] <- c("chr16", 34600000, 46503252)
+#	centroms[nrow(centroms)+1,] <- c("chr17", 22200000, 25788000)
+#	centroms[nrow(centroms)+1,] <- c("chr18", 15400000, 19000000)
+#	centroms[nrow(centroms)+1,] <- c("chr19", 24400000, 28600000)
+#	centroms[nrow(centroms)+1,] <- c("chr20", 25752000, 29400000)
+#	centroms[nrow(centroms)+1,] <- c("chr21", 10911333, 14410480)
+#	centroms[nrow(centroms)+1,] <- c("chr22", 12200000, 17064000)
+#	centroms[nrow(centroms)+1,] <- c("chrX", 58100000, 62983667)
+#	centroms[nrow(centroms)+1,] <- c("chrY", 10037916, 14460539)
+#	
+#	intoNbins <- function(gr, n = 10)
+#	{
+#		if (any(width(gr) < n))
+#			stop("all 'width(gr)' must be >= 'n'")
+#		d <- width(gr) / n
+#		dd <- cumsum(rep(d, each=n))
+#		mask <- logical(n); mask[1] <- TRUE
+#		dd <- dd - rep(dd[mask], each=n)
+#		
+#		starts <- round(rep(start(gr), each=n) + dd)
+#		ends <- c(starts[-1], 0) - 1L
+#		ends[rev(mask)] <- end(gr)
+#		
+#		gr <- gr[rep(seq_along(gr), each=n)]
+#		ranges(gr) <- IRanges(starts, ends)
+#		gr
+#	}	
+#
+#	for (chr in c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY")) {
+#		cen.gr <- gr.data[seqnames(gr.data)==chr,][1]
+#		centrom <- centroms[centroms$chr==chr,]
+#		ranges(cen.gr) <- IRanges(as.numeric(centrom$start), as.numeric(centrom$end))
+#		values(cen.gr) <- as.matrix(values(cen.gr)) * 0
+#		cen.gr.bins <- intoNbins(cen.gr, 200)
+#		gr.data <- c(gr.data, cen.gr.bins)
+#	}
+#}
+gr.data <- sort(gr.data)
+
+subtypes <- as.character(annotation$Subtype[match(names(mcols(gr.data)), annotation$Name)])
+subtypes[annotation$Name=="S1"] <- "immature"
+subtypes[annotation$Name=="S2"] <- "preB"
+subtypes[annotation$Name=="S3"] <- "mature"
+subtypes.withCD19 <- factor(subtypes, levels=c("ER", "DS", "iAMP", "immature", "preB", "mature"))
+subtypes.withoutCD19 <- factor(subtypes[!subtypes %in% c("immature", "preB", "mature")], levels=c("ER", "DS", "iAMP"))
 
 # get gene models in region of interest
 options(ucscChromosomeNames=FALSE)
@@ -97,26 +160,32 @@ names(mcols(gr.ma200)) <- names(mcols(gr.data))
 pdf("/mnt/projects/iamp/results/regional-expression.averages.pdf", width=18, height=12)
 #for (chr in c("chr21")) {
 for (chr in c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY")) {
-	itrack <- IdeogramTrack(genome = "hg19", chromosome = chr)
-	gtrack <- GenomeAxisTrack()
 	
-	dtrack.all <- DataTrack(gr.data, name="Z-score FPM", chromosome = chr, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), ylim=c(-2,2))
+	# ideogram
+	itrack <- IdeogramTrack(genome = "hg19", chromosome = chr)
+	
+	# axis track with highlighted centromere
+	cen.start <- min(start(itrack@range[itrack@range$type=="acen"]))
+	cen.end <- max(end(itrack@range[itrack@range$type=="acen"]))
+	gtrack <- GenomeAxisTrack(range = IRanges(start = cen.start, end = cen.end, names="CEN"), showId=TRUE)
+	
+	dtrack.all <- DataTrack(gr.data[,!names(mcols(gr.data)) %in% c("S1", "S2", "S3")], name="Z-score FPM", chromosome = chr, groups=subtypes.withoutCD19, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), ylim=c(-2,2))
 #	dtrack.win100 <- DataTrack(gr.data, name="100 bins", chromosome = chr, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), window=100, ylim=c(-1.5,1.5))
 #	dtrack.win50 <- DataTrack(gr.data, name="50 bins", chromosome = chr, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), window=50, ylim=c(-1,1))
 #	dtrack.win10 <- DataTrack(gr.data, name="10 bins", chromosome = chr, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), window=10, ylim=c(-0.5,0.5), legend=TRUE)
 	
-	dtrack.ma3 <- DataTrack(gr.ma3, name="mAvg (k=3)", chromosome = chr, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), ylim=c(-1.5,1.5))
-	dtrack.ma10 <- DataTrack(gr.ma10, name="mAvg (k=10)", chromosome = chr, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), ylim=c(-1,1))
-	dtrack.ma50 <- DataTrack(gr.ma50, name="mAvg (k=50)", chromosome = chr, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), ylim=c(-0.5,0.5))
-	dtrack.ma200 <- DataTrack(gr.ma200, name="mAvg (k=200)", chromosome = chr, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), ylim=c(-0.5,0.5), legend=TRUE)
+	dtrack.ma3 <- DataTrack(gr.ma3[,!names(mcols(gr.ma3)) %in% c("S1", "S2", "S3")], name="mAvg (k=3)", chromosome = chr, groups=subtypes.withoutCD19, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), ylim=c(-1.5,1.5))
+	dtrack.ma10 <- DataTrack(gr.ma10[,!names(mcols(gr.ma10)) %in% c("S1", "S2", "S3")], name="mAvg (k=10)", chromosome = chr, groups=subtypes.withoutCD19, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), lty=c(1,1,1), ylim=c(-1,1))
+	dtrack.ma50 <- DataTrack(gr.ma50, name="mAvg (k=50)", chromosome = chr, groups=subtypes.withCD19, type = c("a", "confint", "g"), col=c("blue", "red", "orange", "black", "black", "black"), lty=c(1,1,1,1,2,3), ylim=c(-0.75,0.75))
+	dtrack.ma200 <- DataTrack(gr.ma200, name="mAvg (k=200)", chromosome = chr, groups=subtypes.withCD19, type = c("a", "confint", "g"), col=c("blue", "red", "orange", "black", "black", "black"), lty=c(1,1,1,1,2,3), ylim=c(-0.5,0.5), legend=TRUE)
 	#dtrack.win2 <- DataTrack(gr.data, name="2 bins", chromosome = chr, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), window=2, ylim=c(-0.5,0.5), legend=TRUE)
 
 	if (chr %in% ann.stefford$seqnames) {
 		atrack.1 <- AnnotationTrack(ann.stefford, name="Strefford (2006)", col="black", cex=0.75, fontcolor.feature="black", rot.title=1, featureAnnotation = "id", chromosome = chr)
 		atrack.2 <- AnnotationTrack(ann.olson, name="Olson (2004)", col="black", cex=0.75, fontcolor.feature="black", rot.title=1, featureAnnotation = "id", chromosome = chr)
-		plotTracks(c(itrack, gtrack, atrack.1, atrack.2, dtrack.all, dtrack.ma3, dtrack.ma10, dtrack.ma50, dtrack.ma200), groups=subtypes, cex.title=0.7, cex.axis=0.6)	
+		plotTracks(c(itrack, gtrack, atrack.1, atrack.2, dtrack.all, dtrack.ma3, dtrack.ma10, dtrack.ma50, dtrack.ma200), cex.title=0.7, cex.axis=0.6)	
 	} else {
-		plotTracks(c(itrack, gtrack, dtrack.all, dtrack.ma3, dtrack.ma10, dtrack.ma50, dtrack.ma200), groups=subtypes, cex.title=0.7, cex.axis=0.6)	
+		plotTracks(c(itrack, gtrack, dtrack.all, dtrack.ma3, dtrack.ma10, dtrack.ma50, dtrack.ma200), cex.title=0.7, cex.axis=0.6)	
 	}
 }
 dev.off()
@@ -144,7 +213,6 @@ cnvs.df$integerCN <- round(cnvs.df$integerCN)
 
 cnvs.gr <- as(cnvs.df, "GRanges")
 
-counts.scaled.withCD19 <- t(scale(t(as.matrix(counts.norm))))
 counts.ann.withCD19 <- merge(genes[,c("ensembl_gene_id", "hgnc_symbol", "chromosome_name", "start_position", "end_position")], counts.scaled.withCD19, by.x="ensembl_gene_id", by.y="row.names")
 counts.ann.withCD19$chromosome_name <- paste0("chr", counts.ann.withCD19$chromosome_name)
 
@@ -171,13 +239,17 @@ pdf("/mnt/projects/iamp/results/regional-expression.samples.pdf", width=18, heig
 #for (chr in c("chr21")) {
 for (chr in c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY")) {
 	itrack <- IdeogramTrack(genome = "hg19", chromosome = chr)
-	gtrack <- GenomeAxisTrack()
+	
+	# axis track with highlighted centromere
+	cen.start <- min(start(itrack@range[itrack@range$type=="acen"]))
+	cen.end <- max(end(itrack@range[itrack@range$type=="acen"]))
+	gtrack <- GenomeAxisTrack(range = IRanges(start = cen.start, end = cen.end, names="CEN"), showId=TRUE)
 	
 	cntrack <- AnnotationTrack(cnvs.gr, chromosome=chr, name="CNA", id=cnvs.gr$sample, shape = "box", groupAnnotation = "id", stackHeight=0.9, cex.group=0.8, fontcolor.feature="black", group=cnvs.gr$sample, min.width=1, col.line = "lightgray", col = NULL)
 	feature(cntrack) <- paste0("CN", cnvs.gr$integerCN)
 	
 	dtrack.er <- DataTrack(gr.er, name="ER", chromosome = chr, type = c("a", "g"), groups=names(mcols(gr.er)), ylim=c(-0.75,0.75), legend=TRUE)
-	dtrack.pc <- DataTrack(gr.pc, name="PC", chromosome = chr, type = c("a", "g"), groups=names(mcols(gr.pc)), ylim=c(-0.75,0.75), legend=TRUE)
+	dtrack.pc <- DataTrack(gr.pc, name="DS", chromosome = chr, type = c("a", "g"), groups=names(mcols(gr.pc)), ylim=c(-0.75,0.75), legend=TRUE)
 	dtrack.iamp <- DataTrack(gr.iamp, name="iAMP21", chromosome = chr, type = c("a", "g"), groups=names(mcols(gr.iamp)), ylim=c(-0.75,0.75), legend=TRUE)
 	dtrack.cd19 <- DataTrack(gr.cd19, name="CD19", chromosome = chr, type = c("a", "g"), groups=names(mcols(gr.cd19)), ylim=c(-0.75,0.75), legend=TRUE)
 	
@@ -197,7 +269,7 @@ library(lattice)
 counts.melt <- melt(as.matrix(counts.norm))
 names(counts.melt) <- c("ensembl", "sample", "count")
 counts.melt <- merge(counts.melt, annotation[,c("Name", "Subtype")], by.x="sample", by.y="Name")
-counts.melt$Subtype <- factor(as.character(counts.melt$Subtype), levels=c("CD19", "ER", "PC", "iAMP"))
+counts.melt$Subtype <- factor(as.character(counts.melt$Subtype), levels=c("CD19", "ER", "DS", "iAMP"))
 counts.melt <- merge(genes[,c("ensembl_gene_id", "hgnc_symbol", "chromosome_name", "start_position", "end_position")], counts.melt, by.x="ensembl_gene_id", by.y="ensembl")
 counts.melt$title <- ifelse(counts.melt$hgnc_symbol != "", as.character(counts.melt$hgnc_symbol), counts.melt$ensembl_gene_id)
 counts.melt$title <- factor(as.character(counts.melt$title), levels=unique(counts.melt$title[order(counts.melt$start)]))

@@ -5,7 +5,8 @@ function getDEGTableReport
 	string direction,
 	record group,
 	string ID,
-	string sectionType
+	string section = "",
+	string sectionType = ""
 ) -> (Latex report)
 {
 	// filter genes based on direction?
@@ -26,7 +27,7 @@ function getDEGTableReport
 	pLimitExclude   = 0.1
 	minExprExclude  = 100.00
 	
-	if (ID == "iAMPspecvsCD19" || ID == "PCspecvsCD19" || ID == "ERspecvsCD19" || ID == "iAMPandPCspecvsCD19") {
+	if (ID == "iAMPspecvsCD19" || ID == "DSspecvsCD19" || ID == "ERspecvsCD19" || ID == "iAMPandDSspecvsCD19") {
 		if (direction == "up") {
 			caption = "List of genes significantly lower expressed exclusively in "+group.caseG+" samples."+
 					  ' Criteria for non-differential expression among other samples were $|\log_2$ fold-change (fc)$|<'+fcLimitExclude+
@@ -44,7 +45,6 @@ function getDEGTableReport
 	*/
 
 	if (direction == "up") {
-		section = "Genes with higher expression in "+group.caseG+" than "+group.controlG+" samples"
 		caption = "List of genes significantly higher expressed in "+group.caseG+" samples compared to "+group.controlG+
 				  ' samples, where the $\log_2$ fold-change (fc)$ \geq '+fcLimitInclude+"$ and the minimum mean expression is above "+minExprInclude+
 				  " in at least one of the two groups. The highest p-value accepted is "+pLimitInclude+
@@ -52,7 +52,6 @@ function getDEGTableReport
 	} 
 	else 
 	{
-		section = "Genes with lower expression in "+group.caseG+" than "+group.controlG+" samples"
 		caption = "List of genes significantly lower expressed in "+group.caseG+" samples compared to "+group.controlG+
 				  ' samples, where the $\log_2$ fold-change (fc)$ \leq -'+fcLimitInclude+"$ and the minimum mean expression is above "+minExprInclude+
 				  " in at least one of the two groups. The highest p-value accepted is "+pLimitInclude+

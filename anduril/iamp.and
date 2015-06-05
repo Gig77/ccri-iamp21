@@ -16,11 +16,11 @@ geneGO = INPUT(path="/opt/moksiskaan/pipeline/exec/output/geneGO_9606.csv")  /**
 enrichmentTable = INPUT(path="/opt/moksiskaan/pipeline/exec/output/GOEnrichment_9606.csv") // Moksiskaan specific a priori probabilities for the Gene ontology terms.
 ensemblDb = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/etc/ensemblHomoSapiens.properties") // JDBC parameters for Ensembl~\cite{Flicek2008} database.
 // mysql --host=ensembldb.ensembl.org --port=5306 --database=homo_sapiens_core_73_37 --user=anonymous -B -A -e "select stable_id as ensembl,description from gene where description is not null;" > /mnt/biowaste/data2/christian.frech/iamp/results/current/anduril/ensembl.homo_sapiens_73_37.geneAnnotations.tsv
-geneAnnot = INPUT(path=PROJECT_BASE+"/data/anduril/ensembl.homo_sapiens_75_37.geneAnnotations.tsv")
+geneAnnot = INPUT(path=PROJECT_BASE+"/data/anduril/ensembl.homo_sapiens_75_37.geneAnnotations.tsv") // downloaded via Ensembl biomart http://feb2014.archive.ensembl.org/biomart/martview/b57730c5d3013cd648bcd2c966113d42
 
 fcLimitInclude  = 1.00
-pLimitInclude   = 1e-8
-qLimitInclude   = 1e-4
+pLimitInclude   = 1e-5
+qLimitInclude   = 1e-2
 minExprInclude  = 100.00
 maxNA    		= 0.90    // fraction of samples allowed to have NA values before gene is discarded
 
@@ -69,12 +69,12 @@ sampleGroups = TableQuery(table1 = sampleAnnotation @require,
 		FROM   table1
 		WHERE "Subtype" <> 'iAMP'
       UNION
-	  SELECT 'non-PC'                                     AS "ID",
+	  SELECT 'non-DS'                                     AS "ID",
 		GROUP_CONCAT("Name" ORDER BY "Name" SEPARATOR ',') AS "Members",
 		'median'                                           AS "Type",
-		'Non-P2RY8-CRLF2 samples'          AS "Description"
+		'Non-Down syndrome samples'          AS "Description"
 		FROM   table1
-		WHERE "Subtype" <> 'PC'
+		WHERE "Subtype" <> 'DS'
       UNION
 	  SELECT 'non-ER'                                     AS "ID",
 		GROUP_CONCAT("Name" ORDER BY "Name" SEPARATOR ',') AS "Members",
@@ -85,7 +85,7 @@ sampleGroups = TableQuery(table1 = sampleAnnotation @require,
 	)	
 	ORDER BY "ID"
                                    """)
-sampleGroupsSimple = CSVFilter(csv=sampleGroups, regexp="ID=iAMP|PC|ER|CD19")
+sampleGroupsSimple = CSVFilter(csv=sampleGroups, regexp="ID=iAMP|DS|ER|CD19")
 
 
 //------------------------------------------------------------------------------------------------
@@ -124,6 +124,7 @@ for comparison : std.itercsv(comparisons)
 	{
 		'caseG'    = gCase,
 		'controlG' = gControl,
+		'addG'     = comparison.ControlGroups,
 		'samples'  = samples.ids,
 		'desc'     = comparison.Description
 	}
@@ -152,7 +153,7 @@ for bam : std.iterArray(inputBamFiles)
 	gsnap = GSNAP
 	(
 		reads    = INPUT(path=bam.file), 
-		options  = "--nthreads 10 --maxsearch=100 --npaths=1 --max-mismatches=1 --novelsplicing=0 --batch=4 --genome-unk-mismatch=0",
+		options  = "--db=g1k_v37_etv6runx1 --dir=/data_synology/anduril/docker-images/anduril-gsnap_2014_12_28-human_g1k_v37/db/human_g1k_v37 --nthreads 15 --maxsearch=100 --npaths=1 --max-mismatches=1 --novelsplicing=0 --batch=4 --genome-unk-mismatch=0",
 		docker   = "biowaste:5000/anduril/gsnap",
 		@cpu     = 10, 
 		@memory  = 40000,
@@ -199,6 +200,7 @@ qcReport  = getQCReport
 (
 	alignedBAMs = alignedBams,
     gtf = gtf,
+    counts = bamCounts,
     force expr   = deseqExprMatrix.expr,
     force groups = sampleGroupsSimple
 )
@@ -218,6 +220,7 @@ for ID, group : groups
 		samples     = sampleGroups,
 	    nameControl = group.controlG,
 	    nameCase    = group.caseG,
+	    additionalGroups = group.addG,
 	    label       = ID,
 	    @name       = "deseq_"+ID
 	)
@@ -260,10 +263,10 @@ venn = VennDiagram
 	cexSetName   = 0.3,
 	cexSetSize   = 0.3,
 	doWeights    = true,
-	sets1        = "iAMPvsPC,iAMPvsER,ERvsPC",
-	sets2        = "iAMPvsImmature,PCvsImmature,ERvsImmature",
-	sets3        = "iAMPvsPreB,PCvsPreB,ERvsPreB",
-	sets4        = "iAMPvsMature,PCvsMature,ERvsMature",
+	sets1        = "iAMPvsDS,iAMPvsER,ERvsDS",
+	sets2        = "iAMPvsImmature,DSvsImmature,ERvsImmature",
+	sets3        = "iAMPvsPreB,DSvsPreB,ERvsPreB",
+	sets4        = "iAMPvsMature,DSvsMature,ERvsMature",
 	sectionTitle = "Gene set comparisons",
 	sectionType  = "subsection",
 	types        = "circles"
@@ -335,6 +338,7 @@ for ID, group : groups
 		direction = "up",
 		group = group,
 		ID=ID,
+		section="Genes with higher expression in "+group.caseG+" than "+group.controlG+" samples",
 		sectionType="subsubsection",
 		@name = "degTableUp_"+ID
 	)
@@ -346,6 +350,7 @@ for ID, group : groups
 		direction = "down",
 		group = group,
 		ID=ID,
+		section="Genes with lower expression in "+group.caseG+" than "+group.controlG+" samples",
 		sectionType="subsubsection",
 		@name = "degTableDn_"+ID
 	)
@@ -406,7 +411,8 @@ for ID, group : groups
 		geneGO    = geneGO,
 		ID = ID,
 		sectionType="subsubsection",
-		@name = "goClustering"+ID
+		@name = "goClustering"+ID,
+		@enabled = false
 	)
 
 	//--- GO ENRICHMENT -------------------------------------------------------------------------------//
@@ -492,7 +498,8 @@ for ID, group : groups
 		expand            = "connected",
 		statusFilter      = "NA",
 		sectionType       = "subsubsection",
-		@name             = "network_"+ID
+		@name             = "network_"+ID,
+		@enabled          = useFunct
 	)
  
 	//--- COMBINE REPORTS -----------------------------------------------------------------------------//
@@ -520,27 +527,135 @@ degReport = LatexCombiner
 	sectionTitle = "Differentially expressed genes"
 )
 
+//------------------------------------------------------------------------------------------------
+//--- DEG REPORTS OF miRNA TARGETS GENES
+//------------------------------------------------------------------------------------------------
+
+mirTargets = INPUT(path="/mnt/projects/iamp/data/miRecords/miRecords.predictedTargets.txt")
+miRs = TableQuery(table1 = mirTargets, query = '''SELECT DISTINCT "miRNA ID" FROM table1''')
+
+degReportMirLstGrp = record()
+for ID, group : groups  
+{
+	if (ID=="iAMPvsDS" || ID=="iAMPvsER" || ID=="ERvsDS" || ID=="iAMPvsNoniAMP") 
+	{	
+		degReportMirLst = record()
+		for miR: std.split("sa-miR-155 hsa-miR-125b hsa-miR-125a-3p")
+		{ 
+			instanceSuffix = ID + "_" + std.quote(miR, type="anduril")
+		
+			degTableMir = TableQuery
+			(
+				table1 = degTables[ID] @require,
+				table2 = mirTargets @require,
+				query  = """
+					SELECT * FROM table1 WHERE "Gene" IN (SELECT DISTINCT "Symbol" FROM table2 A WHERE A."miRNA ID" = '""" + miR + """')
+		            """,
+				@name  = "degTableMir_" + instanceSuffix
+			)
+			
+			degTableMirUp = getDEGTableReport
+			(
+				degs = degTableMir,
+				degReportRefs = ensemblRef,
+				direction = "up",
+				group = group,
+				ID=ID,
+				@name  = "degTableMirUp_" + instanceSuffix
+			)
+		
+			degTableMirDn = getDEGTableReport
+			(
+				degs = degTableMir,
+				degReportRefs = ensemblRef,
+				direction = "down",
+				group = group,
+				ID=ID,
+				@name  = "degTableMirDn_" + instanceSuffix
+			)
+		
+			degReportMirLst[instanceSuffix] = LatexCombiner
+			(
+				latex1=degTableMirUp, 
+				latex2=degTableMirDn, 
+				sectionTitle = miR + " target genes differentially expressed comparing " + ID, 
+				sectionType = "subsubsection"
+			)
+		}
+		
+		degReportMirLstGrp[ID] = LatexCombiner
+		(
+			array=degReportMirLst, 
+			sectionTitle = ID, 
+			sectionType = "subsection"
+		)
+		
+	}
+}
+
+degReportMir = LatexCombiner
+(
+	array        = degReportMirLstGrp, 
+	pagebreak    = true,
+	tail         = '\newpage{}',
+	sectionTitle = "Differential expression of microRNA target genes", 
+	sectionType  = "section"
+)
+
 
 //------------------------------------------------------------------------------------------------
 //--- EXPRESSION BOX PLOTS OF SELECTED GENES
 //------------------------------------------------------------------------------------------------
 
-boxplotSelectedGenes = REvaluate
+genesCRA = TableQuery(table1 = geneAnnot @require,  query  = '''SELECT "Ensembl Gene ID" AS "Ensembl" FROM table1 WHERE "Chromosome Name" = '21' AND "Gene Start (bp)" >= 33192000 AND "Gene End (bp)" <= 39796000 ORDER BY "Gene Start (bp)"''')
+boxplotCRA = ExpressionBoxPlot
 (
-	var1   = deseqExprMatrix.expr    @require @doc="Expression matrix",
-	table1 = sampleGroupsSimple  @require @doc="Sample sets",
-	table2 = geneAnnot           @require @doc="Gene annotations",
-	param1 = 'Expression of manually selected genes. MME=CD10; MS4A1=CD20',
-	param2 = "ETV6,RUNX1,CRLF2,P2RY8,EBF1,PAX5,VPREB1,HMGN1,MME,CD34,CD19,MS4A1",
-	script = boxplotscript
+	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
+	groups = sampleGroupsSimple  @require @doc="Sample sets",
+	annotation = geneAnnot           @require @doc="Gene annotations",
+	geneIds = genesCRA,
+	nCol = 10,
+	nRow = 12,
+	height=9,
+	caption = 'Expression of genes located on chromosome 21 in common region of amplification (CRA), as defined by Strefford et al. (2006). This region extends from 33,192,000 bp to 39,796,000 bp.',
+	sectionTitle="Common region of amplification (CRA)", 
+	sectionType="subsection"
 )
 
-boxplotSelectedGenesReport = LatexCombiner
+boxplotRibosomalProteins = ExpressionBoxPlot
 (
-	latex1=boxplotSelectedGenes.document, 
-	pagebreak=true, 
-	sectionTitle="Expression of selected genes", 
-	sectionType="section"
+	expr   = deseqExprMatrix.expr,
+	groups = sampleGroupsSimple,
+	annotation = geneAnnot,
+	hgnc = "RPL10,RPL10A,RPL10L,RPL11,RPL12,RPL13,RPL13A,RPL14,RPL15,RPL17,RPL18,RPL18A,RPL19,RPL21,RPL22,RPL22L1,RPL23,RPL23A,RPL24,RPL26,RPL26L1,RPL27,RPL27A,RPL28,RPL29,RPL3,RPL30,RPL31,RPL32,RPL34,RPL35,RPL35A,RPL36,RPL36A,RPL36AL,RPL37,RPL37A,RPL38,RPL39,RPL39L,RPL3L,RPL4,RPL41,RPL5,RPL6,RPL7,RPL7A,RPL7L1,RPL8,RPL9,RPLP0,RPLP1,RPLP2,RPS10,RPS11,RPS12,RPS13,RPS14,RPS15,RPS15A,RPS16,RPS17,RPS17L,RPS18,RPS19,RPS19BP1,RPS2,RPS20,RPS21,RPS23,RPS24,RPS25,RPS26,RPS27,RPS27A,RPS27L,RPS28,RPS29,RPS3,RPS3A,RPS4X,RPS4Y1,RPS4Y2,RPS5,RPS6,RPS6KA1,RPS6KA2,RPS6KA3,RPS6KA4,RPS6KA5,RPS6KA6,RPS6KB1,RPS6KB2,RPS6KC1,RPS6KL1,RPS7,RPS8,RPS9,RPSA",
+	nRow = 7,
+	nCol = 10,
+	height=9,
+	caption = 'Expression of genes coding for ribosomal proteins.',
+	sectionTitle="Ribosomal proteins", 
+	sectionType="subsection"
+)
+
+boxplotOther = ExpressionBoxPlot
+(
+	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
+	groups = sampleGroupsSimple  @require @doc="Sample sets",
+	annotation = geneAnnot           @require @doc="Gene annotations",
+	hgnc = "ETV6,RUNX1,CRLF2,P2RY8,EBF1,PAX5,VPREB1,HMGN1,MME,CD34,CD19,MS4A1",
+	nCol = 4,
+	nRow = 3,
+	caption = 'Expression of manually selected genes. MME=CD10; MS4A1=CD20',
+	sectionTitle="Other genes of interest", 
+	sectionType="subsection"
+)
+
+
+boxplotSelectedGenes = LatexCombiner
+(
+	array        = {boxplotCRA.document, boxplotRibosomalProteins.document, boxplotOther.document}, 
+	pagebreak    = true,
+	sectionTitle = "Expression values of selected genes", 
+	sectionType  = "section"
 )
 
 //------------------------------------------------------------------------------------------------
@@ -591,7 +706,7 @@ funcReport = createFunctionalAnalysisReport
 //--- FINAL REPORTS
 //------------------------------------------------------------------------------------------------
 
-rConfig = RConfigurationReport(packages = "base,csbl.go,DESeq2,igraph", sectionType = "subsection")
+rConfig = RConfigurationReport(packages = "base,csbl.go,DESeq2,igraph", sectionType = "section")
 bibtexMoksiskaan = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/components/report-BibTeX/moksiskaan.bib")
 bibtexSequencing = INPUT(path="/usr/local/share/anduril-bundles/sequencing/components/report-BibTeX/sequencing.bib")
 
@@ -611,8 +726,9 @@ combinedReport = LatexCombiner
 		experimentReport,
 		qcReport,
 		degReport,
-		boxplotSelectedGenesReport,
+		boxplotSelectedGenes,
 		pgeReport,
+		degReportMir,
 		rConfig.report
 	}
 )

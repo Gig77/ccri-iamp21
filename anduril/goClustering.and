@@ -2,9 +2,9 @@ similarityTable = INPUT(path="/opt/moksiskaan/pipeline/exec/output/GOSimilarity_
 
 goTreeCuts = record
 (
-	iAMPvsPC = 0.3,
+	iAMPvsDS = 0.3,
 	iAMPvsER = 0.3,
-	ERvsPC = 0.3
+	ERvsDS = 0.3
 )
 
 function getGOClusteringReport

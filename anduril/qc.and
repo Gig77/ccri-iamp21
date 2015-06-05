@@ -1,11 +1,12 @@
 /** Prepares some quality control plots for the given BAM files and expression matrix. */
 function getQCReport
 (
-	GTF              gtf,
-	Matrix           expr,
-	SampleGroupTable groups,
-	record		 	 alignedBAMs,
-	string           title = "Quality Control"
+	GTF              	gtf,
+	Matrix           	expr,
+	Array<TextFile>		counts,
+	SampleGroupTable 	groups,
+	record		 	 	alignedBAMs,
+	string           	title = "Quality Control"
 ) -> (Latex report)
 {
 
@@ -21,21 +22,22 @@ function getQCReport
 	(
 		stats = readStats
 	)
-
+	
 	// gene body coverage
 	geneBodyCoverage = {}
 	for sample, bam : alignedBAMs 
 	{
 		geneBodyCoverage[sample] = CalcGeneBodyCoverage
 		(
-			bam = bam, 
+			bam = bam,
+			name = sample, 
 			docker = "biowaste:5000/anduril/rseqc",
 			@name="geneBodyCoverage_"+sample
 		)
 	}
 	
 	combinedCoverage = CSVJoin(array=geneBodyCoverage, useKeys=false)
-	
+
 	geneBodyCoveragePlot = REvaluate
 	(
 		table1 = combinedCoverage.csv,
@@ -81,9 +83,10 @@ function getQCReport
 
 			# prepare latex document
 			tex <- character()
+			tex <- c(tex, '\\clearpage')
 			tex <- c(tex, '\\subsection{Gene body coverage}\\label{GeneBodyCoverage}')
 			tex <- c(tex, latex.figure(plot.curve, image.height=16, caption="Gene body coverage 5' to 3. The more uniform the distribution the better. Distributions heavily skewed to 5' or 3' usually indicate low quality of input RNA."))		    			    
-			tex <- c(tex, latex.figure(plot.heatmap, image.height=16, caption="Heatmap of gene body coverage from 5' to 3'. Darker colors indicate higher coverage. Samples (rows) with similar coverage distribution are clustered together. These clusters should not correspond to biological subgroups of interest to avoid batch effects."))		    			    
+			tex <- c(tex, latex.figure(plot.heatmap, image.height=16, caption="Heatmap of gene body coverage from 5' to 3'. Darker colors indicate higher coverage. Samples (rows) with similar coverage distribution are clustered together. These clusters should not correspond to biological subgroups of interest to exclude batch effects."))		    			    
 
 			table.out <- data.frame() # not used
 			document.out <- tex
@@ -108,11 +111,41 @@ function getQCReport
 		height         = 11
 	)
 
-    hclust = ClusterReport
+//    hclust = ClusterReport
+//    (
+//    	matr         = expr,
+//		showDistance = false,
+//		sectionTitle = "Hierarchical clustering of the samples"
+//	)
+
+	libraryBatches = LibraryBatchEffect
+	(
+		expr = expr,
+		groups = groups,
+		readStats = readStats,
+		geneBodyCoverages = combinedCoverage,
+		sectionTitle = "Sample clustering independent of gene expression values"
+	)
+
+    mds2D = MDSPlot
     (
-    	matr         = expr,
-		showDistance = false,
-		sectionTitle = "Hierarchical clustering of the samples"
+    	expr         = expr,
+		groups       = groups,
+		sectionTitle = "Sample clustering based on gene expression values",
+		dimensions   = 2,
+		plotNames    = true,
+		width        = 10,
+		pagebreak    = true,
+		caption       = "Sample clustering based on gene expression levels. Sample distances are proportional to global differences in normalized gene expression values."
+	)
+	
+	samplesClusterHeatmap = DESeq2ClusterHeatmap
+	(
+		geneCounts   = counts,
+		sectionTitle = "Hierarchical clustering of samples",
+		rlog         = false,
+		vst          = true,
+		voom         = false
 	)
 
     boxplot = BoxPlot
@@ -130,27 +163,14 @@ function getQCReport
 		@bind      = cumsum
 	)
 
-    mds2D = MDSPlot
-    (
-    	expr         = expr,
-		groups       = groups,
-		sectionTitle = "Two dimensional sample clustering",
-		dimensions   = 2,
-		plotNames    = true,
-		width        = 10,
-		pagebreak    = true,
-		caption       = "Multidimensional scaling. Sample distances in the plot are proportional to differences in global gene expression.",
-		@bind        = boxplot
-	)
-
     report = LatexCombiner
     (
     	readStatsChart.document,
     	geneBodyCoveragePlot.document,
-		cumsum,
 		boxplot,
-		hclust.report,
+		libraryBatches.document,
 		mds2D.report,
+		samplesClusterHeatmap.report,
 		sectionTitle = title,
 		sectionType  = "section",
 		pagebreak    = true

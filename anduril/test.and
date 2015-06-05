@@ -1,40 +1,48 @@
-inputBamDir = INPUT(path=$HOME+"/iamp/data/bam/", recursive=false)
-inputBamFiles = Folder2Array(folder1 = inputBamDir, filePattern = "C57C3ACXX_CV_([^_]+)_.*[.]bam$")
+//inputBamDir = INPUT(path=$HOME+"/iamp/data/bam/", recursive=false)
+//inputBamFiles = Folder2Array(folder1 = inputBamDir, filePattern = "C57C3ACXX_CV_([^_]+)_.*[.]bam$")
 //inputBamFiles = Folder2Array(folder1 = inputBamDir, filePattern = "(.*).bam$")
 
-out = {}
-for f : std.iterArray(inputBamFiles) 
-{
-	first = BashEvaluate
-	(
-		param1 = f.key, 
-		param2 = f.file, 
-		script = 
-			"""
-			echo FIRST @param1@...
-			""",
-		@name=f.key+"_first"
-	)
-	out[f.key] = first.optOut1
-}
 
-function run_second(record resultsFirst) -> () 
-{
-	for k,v : resultsFirst
-	{
-		BashEvaluate
-        (
-        	param1 = k,
-        	var1 = v, 
-        	script = 
-        		"""
-        		echo SECOND @param1@...
-        		""",
-        	@name=k
-        )
-	}
-	
-	return record()
-}
+//out = {}
+//for f : std.iterArray(inputBamFiles) 
+//{
+//	first = BashEvaluate
+//	(
+//		param1 = f.key, 
+//		param2 = f.file, 
+//		script = 
+//			"""
+//			echo FIRST @param1@...
+//			""",
+//		@name=f.key+"_first"
+//	)
+//	out[f.key] = first.optOut1
+//}
+//
+//function run_second(record resultsFirst) -> () 
+//{
+//	for k,v : resultsFirst
+//	{
+//		BashEvaluate
+//        (
+//        	param1 = k,
+//        	var1 = v, 
+//        	script = 
+//        		"""
+//        		echo SECOND @param1@...
+//        		""",
+//        	@name=k
+//        )
+//	}
+//	
+//	return record()
+//}
+//
+//run_second(resultsFirst=out)
 
-run_second(resultsFirst=out)
+mirTargets = INPUT(path="/mnt/projects/iamp/data/miRecords/miRecords.predictedTargets.txt")
+miRs = TableQuery(table1 = mirTargets, query = '''SELECT DISTINCT "miRNA ID" FROM table1''')
+
+for miR : std.itercsv(miRs) {
+	std.echo(miR["miRNA ID"])
+}

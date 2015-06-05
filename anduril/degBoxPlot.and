@@ -1,69 +1,3 @@
-boxplotscript = StringInput(content=
-	"""
-	expr <- read.delim(var1, row.names=1)
-							
-	# read sample groups
-	sample2group <- data.frame(sample=character(0), group=character(0))
-	for(g in table1$ID) {
-		members <- unlist(strsplit(table1[table1[,'ID']==g,'Members'],','))
-		sample2group <- rbind(sample2group, data.frame(sample=members, group=g))
-	}
-							
-	# translate ensembl gene ids to HGNC symbols
-	names(table2)[names(table2)=="Ensembl Gene ID"] <- "Ensembl"
-	names(table2)[names(table2)=="Associated Gene Name"] <- "HGNC"
-
-	param2 <- get.parameter(cf,'param2','string')
-	genesViaParameter <- !is.na(param2) && param2 != ""
-	if (genesViaParameter) {  # gene list (HGNC symbols) provided via parameter?
-		genes <- data.frame(HGNC=unlist(strsplit(param2, ',')))
-		genes <- merge(genes, table2[,c("Ensembl", "HGNC")], all.x=T)
-	} else {  # no: use genes (ensembl ids) provided via table input port
-		genes <- merge(table3, table2[,c("Ensembl", "HGNC")], all.x=T)
-                        		genes$HGNC[is.na(genes$HGNC) | genes$HGNC==""] <- genes$Ensembl
-                        	}
-	genes <- merge(genes, expr, by.x="Ensembl", by.y="row.names")
-	                        	
-	# melt dataframe into shape suitable for plotting and add sample groups
-	library(reshape)
-	gexpr <- melt(genes, id.vars=c("Ensembl", "HGNC"))
-	names(gexpr)[names(gexpr)=="variable"] <- "sample"
-	gexpr <- merge(gexpr, sample2group, all.X=T)
-                        	
-	# before plotting, preserve input gene order in lattice output (note: factor levels determines panel order)
-	# original order might have been destroyed by merge
-	if (genesViaParameter) {
-		genes <- genes[match(unlist(strsplit(param2, ',')), genes$HGNC),] 
-	} else {
-		genes <- genes[match(table3$Ensembl, genes$Ensembl),] # original order was destroyed by merge, so let's restore it first
-	}                        	
-	gexpr$HGNC <- factor(as.character(gexpr$HGNC), levels=genes$HGNC)
-                        	
-	# get output file name
-	out.dir   <- get.output(cf, 'document')
-	plot.file <- sprintf('geneboxplot-%s-figure.pdf', get.metadata(cf, 'instanceName'))
-
-	# plot
-	library(lattice)
-	pdf(file.path(out.dir, plot.file))
-	print(bwplot(value~group | HGNC, data=gexpr, 
-		layout=c(4,(length(unique(gexpr$HGNC))+3) %/% 4), 
-		notch=FALSE,
-		as.table=TRUE,
-		ylab="DESeq2 normalized expression",
-		par.settings = list(box.umbrella=list(col="black"), box.rectangle = list(col="black")), 
-		panel=function(x,y,...){
-			panel.grid()
-			panel.bwplot(x,y,pch="|",do.out=FALSE, ...)
-			panel.stripplot(x,y,jitter.data=TRUE,factor=0.8,pch=19,cex=0.3,...)
-		}))
-	dev.off()
-
-	# prepare latex output
-	document.out <- latex.figure(plot.file, caption=get.parameter(cf,'param1','string'))		    			    
-	table.out <- data.frame('No output')							
-	"""
-)
 
 function getDEGBoxPlots
 (
@@ -78,36 +12,31 @@ function getDEGBoxPlots
 {
 	// which direction?
 	if (direction == "up") {
-		degsFiltered = TableQuery(table1 = degs, query='SELECT "Ensembl" FROM table1 WHERE "fc" > 0 LIMIT 12')
-		caption = 'Top-12 genes with higher expression in '+group.caseG+" than "+group.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."
-		sectionTitle = 'Top-12 significant genes with higher expression in '+group.caseG+' than '+group.controlG+' samples'                         
+		degsFiltered = TableQuery(table1 = degs, query='SELECT "Ensembl" FROM table1 WHERE "fc" > 0 LIMIT 28')
+		caption = 'Top-28 genes with higher expression in '+group.caseG+" than "+group.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."
+		sectionTitle = 'Top-28 significant genes with higher expression in '+group.caseG+' than '+group.controlG+' samples'                         
 	} 
 	else if (direction == "down") {
-		degsFiltered = TableQuery(table1 = degs, query='SELECT "Ensembl" FROM table1 WHERE "fc" < 0 LIMIT 12')                        
-		caption = 'Top-12 genes with lower expression in '+group.caseG+" than "+group.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."                         
-		sectionTitle = 'Top-12 significant genes with lower expression in '+group.caseG+' than '+group.controlG+' samples'                         
+		degsFiltered = TableQuery(table1 = degs, query='SELECT "Ensembl" FROM table1 WHERE "fc" < 0 LIMIT 28')                        
+		caption = 'Top-28 genes with lower expression in '+group.caseG+" than "+group.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."                         
+		sectionTitle = 'Top-28 significant genes with lower expression in '+group.caseG+' than '+group.controlG+' samples'                         
 	}
 	else {
 		std.fail("Invalid direction: "+direction)
 	}
 
-	geneBoxplot = REvaluate
+	geneBoxplot = ExpressionBoxPlot
 	(
-  		var1   = exprMatrix,
-		table1 = sampleGroupsSimple,
-		table2 = geneAnnot,
-		table3 = degsFiltered,
-		param1 = caption,
-		script = boxplotscript
-	)
-
-	geneBoxplotReport = LatexCombiner
-	(
-		latex1=geneBoxplot.document, 
-		pagebreak=true, 
+  		expr   = exprMatrix,
+		groups = sampleGroupsSimple,
+		annotation = geneAnnot,
+		geneIds = degsFiltered,
+		nRow = 4,
+		nCol = 7,
+		caption = caption,
 		sectionTitle=sectionTitle, 
 		sectionType=sectionType
 	)
-	
-	return geneBoxplotReport
+
+	return geneBoxplot.document
 }
