@@ -17,6 +17,7 @@ enrichmentTable = INPUT(path="/opt/moksiskaan/pipeline/exec/output/GOEnrichment_
 ensemblDb = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/etc/ensemblHomoSapiens.properties") // JDBC parameters for Ensembl~\cite{Flicek2008} database.
 // mysql --host=ensembldb.ensembl.org --port=5306 --database=homo_sapiens_core_73_37 --user=anonymous -B -A -e "select stable_id as ensembl,description from gene where description is not null;" > /mnt/biowaste/data2/christian.frech/iamp/results/current/anduril/ensembl.homo_sapiens_73_37.geneAnnotations.tsv
 geneAnnot = INPUT(path=PROJECT_BASE+"/data/anduril/ensembl.homo_sapiens_75_37.geneAnnotations.tsv") // downloaded via Ensembl biomart http://feb2014.archive.ensembl.org/biomart/martview/b57730c5d3013cd648bcd2c966113d42
+latexHeader = INPUT(path=PROJECT_BASE+"/scripts/anduril/latexHeader")
 
 fcLimitInclude  = 1.00
 pLimitInclude   = 1e-5
@@ -428,7 +429,7 @@ for ID, group : groups
 		sectionType  = "subsubsection",
 		@name        = "goEnrichment"+ID
 	)
-	
+
 	//--- GENE INTERACTION NETWORK --------------------------------------------------------------------//
 	
 	statusTable = TableQuery
@@ -506,15 +507,16 @@ for ID, group : groups
 
 	degReportLst[ID] = LatexCombiner
 	(
-		latex1=degTableUp, 
-		latex2=degBoxplotUp, 
-		latex3=degTableDn, 
-		latex4=degBoxplotDn, 
-		latex5=exprHeatmap, 
-//		latex6=goClustering,
-		latex7=goEnrichment,
-		latex8=network.report, 
-		sectionTitle="DEGs: "+group.desc, 
+		array = {
+			degTableUp, 
+			degBoxplotUp,
+			degTableDn, 
+			degBoxplotDn, 
+			exprHeatmap, 
+			goEnrichment,
+			network.report
+		},
+		sectionTitle=ID, 
 		sectionType="subsection"
 	)
 }
@@ -525,6 +527,45 @@ degReport = LatexCombiner
 	pagebreak    = true,
 	tail         = '\newpage{}',
 	sectionTitle = "Differentially expressed genes"
+)
+
+//------------------------------------------------------------------------------------------------
+//--- GENE SET ENRICHMENT ANALYSIS (GSEA)
+//------------------------------------------------------------------------------------------------
+include "gsea.and"
+
+gseaReports = record() 
+for ID, group : groups 
+{	
+	rnk = DEG2Rnk
+	(
+		deg = degAllLst[ID],
+		annotation = geneNames,
+		colP = "p" + ID,
+		colFC= "fc" + ID,
+		@name = "rnk_" + ID
+	)
+	
+	includeGseaReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+	
+	gseaReports[ID] = getGSEAReport
+	(
+		rnk = rnk.rnk,
+		ID  = ID,
+		group = group,
+		sectionTitle = ID,
+		sectionType = "subsection",
+		@name = "gsea_" + ID,
+		@enabled = includeGseaReport
+	)
+}
+
+gseaReport = LatexCombiner
+(
+	array        = gseaReports,
+	pagebreak    = true,
+	tail         = '\newpage{}',
+	sectionTitle = "Gene set enrichment analysis (GSEA)"
 )
 
 //------------------------------------------------------------------------------------------------
@@ -729,6 +770,7 @@ combinedReport = LatexCombiner
 		boxplotSelectedGenes,
 		pgeReport,
 		degReportMir,
+		gseaReport,
 		rConfig.report
 	}
 )
@@ -736,7 +778,7 @@ combinedReport = LatexCombiner
 combinedPDF = LatexPDF
 (
 	document = combinedReport,
-	header   = docTemplate.header,
+	header   = latexHeader,
 	footer   = docTemplate.footer,
 	useRefs  = true,
 	verbose  = false
@@ -745,7 +787,7 @@ combinedPDF = LatexPDF
 functioPDF = LatexPDF
 (
 	document = funcReport,
-	header   = docTemplate.header,
+	header   = latexHeader,
 	footer   = docTemplate.footer,
 	useRefs  = true,
 	verbose  = false,

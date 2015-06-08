@@ -1,0 +1,250 @@
+function getGSEAReport
+(
+	CSV    rnk,
+	string ID,
+	record group,
+	string sectionTitle = "",
+	string sectionType = ""
+) -> (Latex report)
+{
+	gsea = GSEA
+	(
+		rnk = rnk,
+		label = ID
+	)
+
+	genesetsByDirection = record()
+	genesetsByDirection["Up"] = gsea.enrichedUp
+	genesetsByDirection["Down"] = gsea.enrichedDown
+
+	gseaReportAll = record()
+	for dir, genesets : genesetsByDirection 
+	{
+		gseaReports = record()
+	
+		// allow Latex to break lines at underscores in column containing gene set names
+		gseaReportProcessed = REvaluate
+		(
+			table1 = genesets,
+			script = StringInput(content=
+				'''
+				table.out <- table1
+				table.out$NAME <- gsub('_', ' ', table.out$NAME, fixed=T)
+				'''),
+			@name = "gseaReportProcessed" + dir 
+		)
+
+		//-----------------------------------
+		// POSITIONAL GENE SETS (C1)
+		//-----------------------------------
+		
+		gseaReportChrTable = REvaluate
+		(
+			table1 = gseaReportProcessed.table,
+			script = StringInput(content='''table.out <- table1[grepl("^CHR[\\dXY]", table1$NAME, perl=T) & table1$'FDR q-val' <= 1e-3,]'''),
+			@name = "gseaReportChrTable" + dir
+		)
+
+		gseaReports["Chr"+dir] = latexTable 
+		(
+			tabledata = gseaReportChrTable.table,
+			caption   = "MSigDB 5.0 positional gene sets (C1) enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples. " +
+			            "These gene sets correspond to each human chromosome and each cytogenetic band that has at least one gene.",
+			minFDR    = 0.001,
+			sectionTitle   = "Positional gene sets",
+			sectionType = "subsubsection",		
+			@name     = "gseaReportChrLatex"+dir
+		) 		
+
+		//-----------------------------------
+		// MIR TARGET GENE SETS
+		//-----------------------------------
+
+		gseaReportMirTable = REvaluate
+		(
+			table1 = gseaReportProcessed.table,
+			script = StringInput(content='''table.out <- table1[grepl("^MIR-", table1$NAME, perl=T) & table1$'FDR q-val' <= 0.1,]'''),
+			@name = "gseaReportMirTable" + dir
+		)
+
+		gseaReports["Mir"+dir] = latexTable 
+		(
+			tabledata = gseaReportMirTable.table,
+			caption   = "MSigDB 5.0 miRNA target gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples. " +
+			            "These sets that contain genes that share a 3'-UTR microRNA binding motif.",
+			minFDR    = 0.1,
+			sectionTitle   = "miRNA target gene sets",
+			sectionType = "paragraph",		
+			@name     = "gseaReportMirLatex"+dir
+		) 		
+
+		//-----------------------------------
+		// CUSTOM GENE SETS
+		//-----------------------------------
+
+		gseaReportCustomTable = REvaluate
+		(
+			table1 = gseaReportProcessed.table,
+			script = StringInput(content='''table.out <- table1[grepl("(PREDICTED|VALIDATED|HENNING)", table1$NAME, perl=T) & table1$'FDR q-val' <= 0.3,]'''),
+			@name = "gseaReportCustomTable" + dir
+		)
+
+		gseaReports["Custom"+dir] = latexTable 
+		(
+			tabledata = gseaReportCustomTable.table,
+			caption   = "Custom gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples. " +
+			            "These gene sets are user-defined and not part of MSigDB.",
+			minFDR    = 0.3,
+			sectionTitle   = "Custom gene sets",
+			sectionType = "paragraph",		
+			@name     = "gseaReportCustomLatex"+dir
+		) 		
+
+		//-----------------------------------
+		// SIGNALING
+		//-----------------------------------
+
+		gseaReportSignalingTable = REvaluate
+		(
+			table1 = gseaReportProcessed.table,
+			script = StringInput(content='''table.out <- table1[grepl("SIGNALING", table1$NAME, perl=T) & table1$'FDR q-val' <= 0.01,]'''),
+			@name = "gseaReportSignalingTable" + dir
+		)
+
+		gseaReports["Signaling"+dir] = latexTable 
+		(
+			tabledata = gseaReportSignalingTable.table,
+			caption   = "MSigDB 5.0 signaling gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples. " +
+			            "All gene sets in this category contain the phrase 'SIGNALING' as part of their name.",
+			minFDR    = 0.01,
+			sectionTitle   = "Signaling gene sets",
+			sectionType = "paragraph",		
+			@name     = "gseaReportSignalingLatex"+dir
+		) 		
+
+		//-----------------------------------
+		// PATHWAYS
+		//-----------------------------------
+
+		gseaReportPathwayTable = REvaluate
+		(
+			table1 = gseaReportProcessed.table,
+			script = StringInput(content='''table.out <- table1[grepl("(REACTOME|KEGG|PID_|BIOCARTA)", table1$NAME, perl=T) & table1$'FDR q-val' <= 0.001,]'''),
+			@name = "gseaReportPathwayTable" + dir
+		)
+
+		gseaReports["Pathway"+dir] = latexTable 
+		(
+			tabledata = gseaReportPathwayTable.table,
+			caption   = "MSigDB 5.0 canonical pathways enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples. " +
+			            "Usually, these gene sets are canonical representations of a biological process compiled by domain experts. Pathway source databases include KEGG, REACTOME, BIOCARTA, and PID.",
+			minFDR    = 0.001,
+			sectionTitle   = "Pathway gene sets",
+			sectionType = "paragraph",		
+			@name     = "gseaReportPathwayLatex"+dir
+		) 		
+
+		//-----------------------------------
+		// TRANSCRIPTION FACTOR TARGETS
+		//-----------------------------------
+
+		gseaReportTFtargetTable = REvaluate
+		(
+			table1 = gseaReportProcessed.table,
+			script = StringInput(content='''table.out <- table1[grepl("V\\$", table1$NAME, perl=T) & table1$'FDR q-val' <= 0.01,]'''),
+			@name = "gseaReportTFtargetTable" + dir
+		)
+
+		gseaReports["TFtarget"+dir] = latexTable 
+		(
+			tabledata = gseaReportTFtargetTable.table,
+			caption   = "MSigDB 5.0 transcription factor target gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples. " +
+			            "These gene sets contain genes that share a transcription factor binding site defined in the TRANSFAC (version 7.4, http://www.gene-regulation.com/) " +
+			            "database. Each of these gene sets is annotated by a TRANSFAC record.",
+			minFDR    = 0.01,
+			sectionTitle   = "TF target gene sets",
+			sectionType = "paragraph",		
+			@name     = "gseaReportTFtargetLatex"+dir
+		) 		
+
+		//-----------------------------------
+		// CHEMICAL PERTURBATIONS
+		//-----------------------------------
+
+		gseaReportChemPertTable = REvaluate
+		(
+			table1 = gseaReportProcessed.table,
+//			script = StringInput(content='''table.out <- table1[grepl("( UP| DN)$", table1$NAME, perl=T) & table1$'FDR q-val' <= 1e-6 & abs(table1$NES) >= 2.5,]'''),
+			script = StringInput(content='''table.out <- table1[grepl("( UP| DN)$", table1$NAME, perl=T) & table1$'FDR q-val' <= 1e-6,]'''),
+			@name = "gseaReportChemPertTable" + dir
+		)
+
+		gseaReports["ChemPert"+dir] = latexTable 
+		(
+			tabledata = gseaReportChemPertTable.table,
+			caption   = "MSigDB 5.0 chemical perturbation gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples. " +
+			            "These gene sets represent expression signatures of genetic and chemical perturbations. A number of these gene sets come in pairs: an xxx\\_UP (xxx\\_DN) gene set " +
+			            "representing genes induced (repressed) by the perturbation. The MSigDB gene set page for each gene set lists the PubMed citation on which it is based.",
+			minFDR    = 1e-6,
+			minNES    = 4,
+			sectionTitle   = "Chemical perturbation gene sets",
+			sectionType = "paragraph",		
+			@name     = "gseaReportChemPertLatex"+dir
+		) 
+		
+		gseaReportAll[dir] = LatexCombiner
+		(
+			array = gseaReports,
+			sectionTitle = "GSEA " + dir + "-regulated genes",
+			sectionType = "subsubsection",
+			@name = "gseaReportAll" + dir
+		)
+	}
+	
+	gseaReportFinal = LatexCombiner
+	(
+		array = gseaReportAll,
+		sectionTitle = sectionTitle,
+		sectionType = sectionType
+	)
+	
+	return gseaReportFinal
+}
+
+function latexTable
+(
+	CSV    tabledata,
+	string caption,
+	float  minFDR,
+	float  minNES = 0,
+	string sectionTitle = "",
+	string sectionType = ""
+) -> (Latex report)
+{
+	captionNES = ""
+	if (minNES > 0) {
+		captionNES = "In addition, because there were too many significant hits, a minimum absolute NES of " + minNES + " was required. "
+	}
+	latex = CSV2Latex
+	(
+		tabledata    = tabledata,
+		attach       = false,
+		caption      = caption + " FDR q-value threshold is " + minFDR + ". " + captionNES + "Gene sets with less than 10 or more than 500 genes were excluded from analysis. " +
+		               "Table sorted by normalized enrichment score (NES) from most to least enriched. The last column shows genes contributing to the enrichment together with their rank in the sorted input gene list.",
+		columns      = "NAME,NES,FDR q-val,CORE_GENES",
+		colFormat    = "p{5cm}rrp{9cm}",
+		countRows    = true,
+		dropMissing  = false,
+		listCols     = "",
+		rename       = "NAME=Gene set,CORE_GENES=Core enrichment genes (rank)",
+		numberFormat = "FDR q-val=#0.0E00",
+		pageBreak    = false,
+		section      = sectionTitle,
+		sectionType  = sectionType,
+		skipEmpty    = true
+	)
+	
+	return latex.report
+}
+	
+	
