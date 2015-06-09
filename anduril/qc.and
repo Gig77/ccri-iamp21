@@ -131,7 +131,7 @@ function getQCReport
     (
     	expr         = expr,
 		groups       = groups,
-		sectionTitle = "Sample clustering based on gene expression values",
+		sectionTitle = "Sample clustering based on normalized gene expression values",
 		dimensions   = 2,
 		plotNames    = true,
 		width        = 10,

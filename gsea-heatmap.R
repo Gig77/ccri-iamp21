@@ -184,70 +184,70 @@ plot.heatmap <- function(data, cexCol=0.9, cexRow=0.9, sigLevel=0.02, hsigLevel=
 }
 
 # PATHWAYS
-pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap.pathways.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_pathways.pdf", height=15, width=10)
 geneset <- grep("^(REACTOME|KEGG|PID_|BIOCARTA)", rownames(merged), perl=T, value=TRUE)
 genesets <- geneset
 plot.heatmap(merged[geneset,], cexRow=0.7, sigLevel=0.001, hsigLevel=1e-10, title="MSigDB 5.0 Pathways")
 dev.off()
 
 # CHEMICAL PERTURBATION
-pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap.chemical-perturbation.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_chemical-perturbation.pdf", height=15, width=10)
 geneset <- grep("(_UP|_DN)$", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], cexRow=0.7, sigLevel=1e-3, hsigLevel=1e-10, minNES=5.5, title="MSigDB 5.0 Chemical Perturbation")
 dev.off()
 
 # MIR TARGETS
-pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap.mir.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_mir.pdf", height=15, width=10)
 geneset <- grep("MIR-", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], sigLevel=0.1, hsigLevel=1e-2, title="MSigDB 5.0 MiR Targets")
 dev.off()
 
 # CUSTOM MIR TARGET GENE SETS
-pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap.mir.custom.pdf", height=8, width=10)
+pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_custom.pdf", height=8, width=10)
 geneset <- grep("(PREDICTED|VALIDATED|HENNING)", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], sigLevel=0.3, hsigLevel=0.05, title="Custom MiR Target Gene Sets")
 dev.off()
 
 # CHROMOSOME POSITION
-pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap.chr.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_chr.pdf", height=15, width=10)
 geneset <- grep("^CHR[\\dXY]", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], title="Chromosome Location", cexRow=1, sigLevel=1e-3, hsigLevel=1e-8)
 dev.off()
 
 # SIGNALING
-pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap.signaling.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_signaling.pdf", height=15, width=10)
 geneset <- grep("SIGNALING", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], title="MSigDB 5.0 Signaling", sigLevel=0.01, hsigLevel=1e-10)
 dev.off()
 
-# PROMOTER MOTIF
-pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap.promoter-motif.pdf", height=15, width=10)
+# TF TARGETS
+pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_TF-targets.pdf", height=15, width=10)
 geneset <- grep("V\\$", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
-plot.heatmap(merged[geneset,], cexRow=0.8, sigLevel=0.01, title="MSigDB 5.0 Promoter Motif")
+plot.heatmap(merged[geneset,], cexRow=0.8, sigLevel=0.01, title="MSigDB 5.0 TF target gene sets")
 dev.off()
 
 # Cancer gene neighborhoods
-pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap.neighborhood.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_neighborhood.pdf", height=15, width=10)
 geneset <- grep("^(CAR_|GCM_|GNF2_|MORF_)", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], cexRow=0.5, sigLevel=1e-10, hsigLevel=1e-10, title="MSigDB 5.0 Cancer Gene Neighborhoods")
 dev.off()
 
 # MODULES
-pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap.module.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_module.pdf", height=15, width=10)
 geneset <- grep("^MODULE_", rownames(merged), perl=T, value=TRUE)
 genesets <- c(genesets, geneset)
 plot.heatmap(merged[geneset,], cexRow=0.5, sigLevel=0.001, title="MSigDB 5.0 Modules")
 dev.off()
 
 # OTHER
-pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap.other.pdf", height=15, width=10)
+pdf("/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_other.pdf", height=15, width=10)
 geneset <- rownames(merged)[!rownames(merged) %in% genesets]
 plot.heatmap(merged[geneset,], cexRow=0.7, sigLevel=1e-5, hsigLevel=1e-10, title="MSigDB 5.0 Other Gene Sets")
 dev.off()

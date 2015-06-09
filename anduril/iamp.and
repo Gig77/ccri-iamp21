@@ -560,8 +560,102 @@ for ID, group : groups
 	)
 }
 
+gseaHeatmaps = REvaluate
+(
+	script = StringInput(content=
+		'''
+		instance.name <- get.metadata(cf, 'instanceName')				
+		document.dir <- get.output(cf, 'document')
+		dir.create(document.dir, recursive=TRUE)
+			
+		system("Rscript /mnt/projects/iamp/scripts/gsea-heatmap.R")
+						
+		image.height <- 24
+		
+		tex <- character()
+		tex <- c(tex, sprintf('\\subsection{Graphical overview of enrichment results}\\label{%s}', instance.name))
+		tex <- c(tex, 'This section provides a graphical overview of GSEA results in form of clustered heatmaps. Enriched gene sets are split into different categories to reduce complexity and ease interpretation. Gene sets showing a similar enrichment pattern across all pairwise comparisons are clustered together. Additional details about enriched gene sets, including enrichment scores, q-values, and core genes responsible for the enrichment are provided in subsequent sections.')
+
+		file.chr <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_chr.pdf"
+		file.copy(file.chr, document.dir)
+		tex <- c(tex, '\\clearpage')
+		tex <- c(tex, '\\subsubsection{MSigDB 5.0 positional gene sets}')
+		tex <- c(tex, latex.figure(basename(file.chr), caption="MSigDB 5.0 positional gene sets.", image.height=image.height))
+#		tex <- c(tex, '\\FloatBarrier{}')
+		
+		file.mir <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_mir.pdf"
+		file.copy(file.mir, document.dir)
+		tex <- c(tex, '\\clearpage')
+		tex <- c(tex, '\\subsubsection{MSigDB 5.0 miRNA target gene sets}')
+		tex <- c(tex, latex.figure(basename(file.mir), caption="MSigDB 5.0 miRNA target gene sets.", image.height=image.height))
+#		tex <- c(tex, '\\FloatBarrier{}')
+
+		file.custom <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_custom.pdf"
+		file.copy(file.custom, document.dir)
+		tex <- c(tex, '\\clearpage')
+		tex <- c(tex, '\\subsubsection{Custom gene sets}')
+		tex <- c(tex, latex.figure(basename(file.custom), caption="Custom gene sets.", image.height=18))
+#		tex <- c(tex, '\\FloatBarrier{}')
+
+		file.signaling <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_signaling.pdf"
+		file.copy(file.signaling, document.dir)
+		tex <- c(tex, '\\clearpage')
+		tex <- c(tex, '\\subsubsection{MSigDB 5.0 signaling gene sets}')
+		tex <- c(tex, latex.figure(basename(file.signaling), caption="MSigDB 5.0 signaling gene sets.", image.height=image.height))
+#		tex <- c(tex, '\\FloatBarrier{}')
+
+		file.tftargets <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_TF-targets.pdf"
+		file.copy(file.tftargets, document.dir)
+		tex <- c(tex, '\\clearpage')
+		tex <- c(tex, '\\subsubsection{MSigDB 5.0 TF target gene sets}')
+		tex <- c(tex, latex.figure(basename(file.tftargets), caption="MSigDB 5.0 TF target gene sets.", image.height=image.height))
+#		tex <- c(tex, '\\FloatBarrier{}')
+
+		file.pathway <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_pathways.pdf"
+		file.copy(file.pathway, document.dir)
+		tex <- c(tex, '\\clearpage')
+		tex <- c(tex, '\\subsubsection{MSigDB 5.0 canonical pathways}')
+		tex <- c(tex, latex.figure(basename(file.pathway), caption="MSigDB 5.0 canonical pathways.", image.height=image.height))
+#		tex <- c(tex, '\\FloatBarrier{}')
+
+		file.neighborhood <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_neighborhood.pdf"
+		file.copy(file.neighborhood, document.dir)
+		tex <- c(tex, '\\clearpage')
+		tex <- c(tex, '\\subsubsection{MSigDB 5.0 cancer gene neighborhoods}')
+		tex <- c(tex, latex.figure(basename(file.neighborhood), caption="MSigDB 5.0 cancer gene neighborhoods.", image.height=image.height))
+#		tex <- c(tex, '\\FloatBarrier{}')
+
+		file.chem <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_chemical-perturbation.pdf"
+		file.copy(file.chem, document.dir)
+		tex <- c(tex, '\\clearpage')
+		tex <- c(tex, '\\subsubsection{MSigDB 5.0 chemical perturbation gene sets}')
+		tex <- c(tex, latex.figure(basename(file.chem), caption="MSigDB 5.0 chemical perturbation gene sets.", image.height=image.height))
+#		tex <- c(tex, '\\FloatBarrier{}')
+
+		file.other <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_other.pdf"
+		file.copy(file.other, document.dir)
+		tex <- c(tex, '\\clearpage')
+		tex <- c(tex, '\\subsubsection{MSigDB 5.0 other gene sets}')
+		tex <- c(tex, latex.figure(basename(file.other), caption="MSigDB 5.0 other gene sets.", image.height=image.height))
+#		tex <- c(tex, '\\FloatBarrier{}')
+
+		document.out <- tex
+			
+		table.out <- data.frame() # avoid error b/c of missing output			
+		return(0)
+		'''
+	),
+	@bind = gseaReports["iAMPvsDS"],
+	@bind = gseaReports["iAMPvsER"],
+	@bind = gseaReports["ERvsDS"],
+	@bind = gseaReports["iAMPvsNoniAMP"],
+	@bind = gseaReports["DSvsNonDS"],
+	@bind = gseaReports["ERvsNonER"]
+)					    			    
+
 gseaReport = LatexCombiner
 (
+	latex1       = gseaHeatmaps.document,
 	array        = gseaReports,
 	pagebreak    = true,
 	tail         = '\newpage{}',
@@ -639,7 +733,7 @@ degReportMir = LatexCombiner
 	array        = degReportMirLstGrp, 
 	pagebreak    = true,
 	tail         = '\newpage{}',
-	sectionTitle = "Differential expression of microRNA target genes", 
+	sectionTitle = "Differentially expressed target genes of selected microRNAs", 
 	sectionType  = "section"
 )
 
