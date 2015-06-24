@@ -12,12 +12,17 @@ inputBamFiles = Folder2Array(folder1 = inputBamDir, filePattern = "C57C3ACXX_CV_
 sampleAnnotation = INPUT(path=PROJECT_BASE+"/data/qlucore/annotations.txt")
 comparisons = INPUT(path=PROJECT_BASE+"/data/anduril/comparisons.tsv")
 gtf = INPUT(path=PROJECT_BASE+"/data/Homo_sapiens.GRCh37.75.etv6runx1.gtf.gz")
+
+//zcat /mnt/projects/iamp/data/Homo_sapiens.GRCh37.75.etv6runx1.gtf.gz | grep 'gene_biotype "rRNA"' | perl -ne '/(ENSG[^\"]+)/; print "$1\n"' | sort | uniq > /tmp/ensemblid.rrna
+//zcat /mnt/projects/iamp/data/Homo_sapiens.GRCh37.75.etv6runx1.gtf.gz | grep -vf /tmp/ensemblid.rrna | gzip -c > /mnt/projects/iamp/data/Homo_sapiens.GRCh37.75.etv6runx1.norRNA.gtf.gz
+gtfNorRNA = INPUT(path=PROJECT_BASE+"/data/Homo_sapiens.GRCh37.75.etv6runx1.norRNA.gtf.gz")
 geneGO = INPUT(path="/opt/moksiskaan/pipeline/exec/output/geneGO_9606.csv")  /** Gene Ontology annotations of all genes */
 enrichmentTable = INPUT(path="/opt/moksiskaan/pipeline/exec/output/GOEnrichment_9606.csv") // Moksiskaan specific a priori probabilities for the Gene ontology terms.
 ensemblDb = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/etc/ensemblHomoSapiens.properties") // JDBC parameters for Ensembl~\cite{Flicek2008} database.
 // mysql --host=ensembldb.ensembl.org --port=5306 --database=homo_sapiens_core_73_37 --user=anonymous -B -A -e "select stable_id as ensembl,description from gene where description is not null;" > /mnt/biowaste/data2/christian.frech/iamp/results/current/anduril/ensembl.homo_sapiens_73_37.geneAnnotations.tsv
 geneAnnot = INPUT(path=PROJECT_BASE+"/data/anduril/ensembl.homo_sapiens_75_37.geneAnnotations.tsv") // downloaded via Ensembl biomart http://feb2014.archive.ensembl.org/biomart/martview/b57730c5d3013cd648bcd2c966113d42
 latexHeader = INPUT(path=PROJECT_BASE+"/scripts/anduril/latexHeader")
+genesetCategories = INPUT(path=PROJECT_BASE+"/results/geneset_category.tsv")
 
 fcLimitInclude  = 1.00
 pLimitInclude   = 1e-5
@@ -105,7 +110,6 @@ for comparison : std.itercsv(comparisons)
 		if (gControl == null) { gControl = g } else
 		std.fail("Too many groups listed for ", comparison.ID, " (", comparison.Description, "). Members = ", comparison.Members, sep='')
 	}
-	ID = std.strReplace(comparison.ID, "^fc", "")
 	
 	// fetch sample names
 	// make 'CD19+' match in following regular expression 
@@ -117,11 +121,11 @@ for comparison : std.itercsv(comparisons)
 		columnOut = ".GeneId",
 		isList    = true,
 		regexp1   = "ID=("+gCase+"|"+gControlEscaped+")",
-		@name     = "samples_"+ID
+		@name     = "samples_"+comparison.ID
 	)
 
 	// add group record	
-	groups[ID] = 
+	groups[comparison.ID] = 
 	{
 		'caseG'    = gCase,
 		'controlG' = gControl,
@@ -167,7 +171,7 @@ for bam : std.iterArray(inputBamFiles)
 //--- EXPRESSION MATRIX
 //------------------------------------------------------------------------------------------------
 
-//bamCounts = HTSeq(alignments = alignedBAMs, annotationGTF = gtf, options = "-t exon -s no")
+//bamCounts = HTSeq(alignments = alignedBAMs, annotationGTF = gtfNorRNA, options = "-t exon -s no")
 bamCounts  = {}
 for sample, bam : alignedBams 
 {
@@ -176,7 +180,7 @@ for sample, bam : alignedBams
 	count = BashEvaluate
 	(
 		var1 = bam,
-		var2 = gtf,
+		var2 = gtfNorRNA,
 		script = "htseq-count -f bam -t exon -s no @var1@ @var2@ | grep -v '^__' > @optOut1@",
 		@name = "htseq_"+sName
 	)
@@ -210,6 +214,20 @@ qcReport  = getQCReport
 //--- DIFFERENTIAL GENE EXPRESSION ANALYSIS
 //------------------------------------------------------------------------------------------------
 
+gMoksisA = PiispanhiippaAnnotator(sourceKeys = deseqExprMatrix.expr @require,
+                                  connection = moksiskaanInit.connection,
+                                  inputDB    = XrefType_Ensembl_gene,
+                                  organism   = Organism_Homo_sapiens,
+                                  targetDB   = "BioentityName,DNARegion")
+
+geneNames = CSVCleaner(original   = gMoksisA.bioAnnotation,
+                       columns    = "sourceKey,BioentityName,DNARegion",
+                       rename     = "sourceKey=Ensembl,BioentityName=Gene",
+                       skipQuotes = "*",
+                       trim       = true,
+                       @keep      = true)
+
+
 degAllLst  = record()        // unfiltered output of DESeq2 for each comparison
 degCalledLst  = record()     // only significant DEGs for each comparison
 for ID, group : groups
@@ -223,11 +241,33 @@ for ID, group : groups
 	    nameCase    = group.caseG,
 	    additionalGroups = group.addG,
 	    label       = ID,
-	    @name       = "deseq_"+ID
+	    @name       = "deseq_" + ID
 	)
 	degAllLst[ID] = deseq.results
+	
+	// annotate DESeq2 output with additional gene attributes
+	deseqAnnotated = TableQuery
+	(
+		table1 = deseq.results @require,
+		table2 = geneNames     @require,
+		table3 = geneAnnot     @require,
+		query  = 
+			'''
+			SELECT G."ids"                        AS "Ensembl",
+			A."Gene"                              AS "Gene",
+			D."Description"                       AS "Description",
+			CONCAT(D."Chromosome Name", D."Band") AS "Band",
+			G.*
+			FROM table1 G
+				LEFT OUTER JOIN table2 AS A ON (G."ids" = A."Ensembl")
+				LEFT OUTER JOIN table3 AS D ON (G."ids" = D."Ensembl Gene ID")
+			ORDER  BY "q'''+ID+'''", ABS("fc'''+ID+'''") DESC
+			''',
+		@name  = "deseqAnnotated_" + ID
+	)
+	
 
-	// filter for statistically significant DEGs
+	// subset statistically significant DEGs
 	degCalled = TableQuery
 	(
 		table1 = deseq @require,
@@ -284,19 +324,6 @@ include "degBoxPlot.and"
 include "goClustering.and"
 include "goEnrichment.and"
 include "expressionHeatmap.and"
-
-gMoksisA = PiispanhiippaAnnotator(sourceKeys = deseqExprMatrix.expr @require,
-                                  connection = moksiskaanInit.connection,
-                                  inputDB    = XrefType_Ensembl_gene,
-                                  organism   = Organism_Homo_sapiens,
-                                  targetDB   = "BioentityName,DNARegion")
-
-geneNames = CSVCleaner(original   = gMoksisA.bioAnnotation,
-                       columns    = "sourceKey,BioentityName,DNARegion",
-                       rename     = "sourceKey=Ensembl,BioentityName=Gene",
-                       skipQuotes = "*",
-                       trim       = true,
-                       @keep      = true)
 
 degTables = record()
 for ID, group : groups 
@@ -534,7 +561,12 @@ degReport = LatexCombiner
 //------------------------------------------------------------------------------------------------
 include "gsea.and"
 
-gseaReports = record() 
+gseaMSigDBUp = record()
+gseaMSigDBDn = record()
+gseaGeneSigDBUp = record()
+gseaGeneSigDBDn = record()
+gseaReportsMSigDB = record() 
+gseaReportsGeneSigDB = record() 
 for ID, group : groups 
 {	
 	rnk = DEG2Rnk
@@ -545,122 +577,262 @@ for ID, group : groups
 		colFC= "fc" + ID,
 		@name = "rnk_" + ID
 	)
+
+	// run GSEA
+	//---
+	gseaMSigDB = GSEA
+	(
+		rnk = rnk,
+		categories = genesetCategories,
+		label = ID,
+		gmt   = "/mnt/projects/generic/data/msigdb5.0/msigdb.v5.0.symbols.gmt,/mnt/projects/iamp/results/gsea/custom/mir_target_genesets.gmx",
+		options = "-nperm 100 -set_max 500 -set_min 10",
+		@name = "gseaMSigDB_" + ID,
+		@enabled = true
+	)
+	gseaMSigDBUp[ID] = gseaMSigDB.enrichedUp
+	gseaMSigDBDn[ID] = gseaMSigDB.enrichedDown
+
+	gseaDSigDB = GSEA
+	(
+		rnk = rnk,
+		categories = genesetCategories,
+		label = ID,
+		gmt   = "/mnt/projects/generic/data/DSigDB/DSigDB_v1.0_All.nodup.gmt",
+		options = "-nperm 100 -set_max 1000 -set_min 5",
+		@name = "gseaDSigDB_" + ID,
+		@enabled = false
+	)
+
+	gseaGeneSigDB = GSEA
+	(
+		rnk = rnk,
+		categories = genesetCategories,
+		label = ID,
+		gmt   = "/mnt/projects/generic/data/GeneSigDB/ALL_SIGSv4.nodup.gmt",
+		options = "-nperm 100 -set_max 1000 -set_min 5",
+		@name = "gseaGeneSigDB_" + ID,
+		@enabled = true
+	)
+	gseaGeneSigDBUp[ID] = gseaGeneSigDB.enrichedUp
+	gseaGeneSigDBDn[ID] = gseaGeneSigDB.enrichedDown
 	
 	includeGseaReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
 	
-	gseaReports[ID] = getGSEAReport
+	gseaReportsMSigDB[ID] = getGSEAReport
 	(
-		rnk = rnk.rnk,
+		enrichedUp = gseaMSigDB.enrichedUp,
+		enrichedDown = gseaMSigDB.enrichedDown,
 		ID  = ID,
 		group = group,
 		sectionTitle = ID,
 		sectionType = "subsection",
-		@name = "gsea_" + ID,
+		@name = "gseaReportMSigDB_" + ID,
 		@enabled = includeGseaReport
+	)
+
+	gseaReportsGeneSigDB[ID] = getGSEAReport
+	(
+		enrichedUp = gseaGeneSigDB.enrichedUp,
+		enrichedDown = gseaGeneSigDB.enrichedDown,
+		ID  = ID,
+		group = group,
+		sectionTitle = ID,
+		sectionType = "subsection",
+		@name = "gseaReportGeneSigDB_" + ID,
+		@enabled = false
 	)
 }
 
-gseaHeatmaps = REvaluate
+gseaHeatmapMSigDBPathway = GSEAHeatmap
 (
-	script = StringInput(content=
-		'''
-		instance.name <- get.metadata(cf, 'instanceName')				
-		document.dir <- get.output(cf, 'document')
-		dir.create(document.dir, recursive=TRUE)
-			
-		system("Rscript /mnt/projects/iamp/scripts/gsea-heatmap.R")
-						
-		image.height <- 24
-		
-		tex <- character()
-		tex <- c(tex, sprintf('\\subsection{Graphical overview of enrichment results}\\label{%s}', instance.name))
-		tex <- c(tex, 'This section provides a graphical overview of GSEA results in form of clustered heatmaps. Enriched gene sets are split into different categories to reduce complexity and ease interpretation. Gene sets showing a similar enrichment pattern across all pairwise comparisons are clustered together. Additional details about enriched gene sets, including enrichment scores, q-values, and core genes responsible for the enrichment are provided in subsequent sections.')
+	title = "MSigDB 5.0 Pathways",
+	caption = "MSigDB 5.0 canonical pathways.",
+	enrichedUp = gseaMSigDBUp,
+	enrichedDown = gseaMSigDBDn,
+	sectionTitle = "",
+	sectionType = "",
+	regexCategoryNames = "MSIGDB_C2_PATHWAYS",
+	sigCutoff = 0.001,
+	hsigCutoff = 1e-6,
+	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.001 | FDR.q.val.DSvsNonDS <= 0.001 | FDR.q.val.ERvsNonER <= 0.001| FDR.q.val.iAMPvsDS <= 0.001 | FDR.q.val.iAMPvsER <= 0.001 | FDR.q.val.ERvsDS <= 0.001",
+	cexRow = 0.7,
+	pdfWidth = 10,
+	pdfHeight = 15,
+	figureHeight = 24
+)
 
-		file.chr <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_chr.pdf"
-		file.copy(file.chr, document.dir)
-		tex <- c(tex, '\\clearpage')
-		tex <- c(tex, '\\subsubsection{MSigDB 5.0 positional gene sets}')
-		tex <- c(tex, latex.figure(basename(file.chr), caption="MSigDB 5.0 positional gene sets.", image.height=image.height))
-#		tex <- c(tex, '\\FloatBarrier{}')
-		
-		file.mir <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_mir.pdf"
-		file.copy(file.mir, document.dir)
-		tex <- c(tex, '\\clearpage')
-		tex <- c(tex, '\\subsubsection{MSigDB 5.0 miRNA target gene sets}')
-		tex <- c(tex, latex.figure(basename(file.mir), caption="MSigDB 5.0 miRNA target gene sets.", image.height=image.height))
-#		tex <- c(tex, '\\FloatBarrier{}')
-
-		file.custom <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_custom.pdf"
-		file.copy(file.custom, document.dir)
-		tex <- c(tex, '\\clearpage')
-		tex <- c(tex, '\\subsubsection{Custom gene sets}')
-		tex <- c(tex, latex.figure(basename(file.custom), caption="Custom gene sets.", image.height=18))
-#		tex <- c(tex, '\\FloatBarrier{}')
-
-		file.signaling <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_signaling.pdf"
-		file.copy(file.signaling, document.dir)
-		tex <- c(tex, '\\clearpage')
-		tex <- c(tex, '\\subsubsection{MSigDB 5.0 signaling gene sets}')
-		tex <- c(tex, latex.figure(basename(file.signaling), caption="MSigDB 5.0 signaling gene sets.", image.height=image.height))
-#		tex <- c(tex, '\\FloatBarrier{}')
-
-		file.tftargets <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_TF-targets.pdf"
-		file.copy(file.tftargets, document.dir)
-		tex <- c(tex, '\\clearpage')
-		tex <- c(tex, '\\subsubsection{MSigDB 5.0 TF target gene sets}')
-		tex <- c(tex, latex.figure(basename(file.tftargets), caption="MSigDB 5.0 TF target gene sets.", image.height=image.height))
-#		tex <- c(tex, '\\FloatBarrier{}')
-
-		file.pathway <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_pathways.pdf"
-		file.copy(file.pathway, document.dir)
-		tex <- c(tex, '\\clearpage')
-		tex <- c(tex, '\\subsubsection{MSigDB 5.0 canonical pathways}')
-		tex <- c(tex, latex.figure(basename(file.pathway), caption="MSigDB 5.0 canonical pathways.", image.height=image.height))
-#		tex <- c(tex, '\\FloatBarrier{}')
-
-		file.neighborhood <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_neighborhood.pdf"
-		file.copy(file.neighborhood, document.dir)
-		tex <- c(tex, '\\clearpage')
-		tex <- c(tex, '\\subsubsection{MSigDB 5.0 cancer gene neighborhoods}')
-		tex <- c(tex, latex.figure(basename(file.neighborhood), caption="MSigDB 5.0 cancer gene neighborhoods.", image.height=image.height))
-#		tex <- c(tex, '\\FloatBarrier{}')
-
-		file.chem <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_chemical-perturbation.pdf"
-		file.copy(file.chem, document.dir)
-		tex <- c(tex, '\\clearpage')
-		tex <- c(tex, '\\subsubsection{MSigDB 5.0 chemical perturbation gene sets}')
-		tex <- c(tex, latex.figure(basename(file.chem), caption="MSigDB 5.0 chemical perturbation gene sets.", image.height=image.height))
-#		tex <- c(tex, '\\FloatBarrier{}')
-
-		file.other <- "/mnt/projects/iamp/results/gsea/msigdb5/gsea-heatmap_other.pdf"
-		file.copy(file.other, document.dir)
-		tex <- c(tex, '\\clearpage')
-		tex <- c(tex, '\\subsubsection{MSigDB 5.0 other gene sets}')
-		tex <- c(tex, latex.figure(basename(file.other), caption="MSigDB 5.0 other gene sets.", image.height=image.height))
-#		tex <- c(tex, '\\FloatBarrier{}')
-
-		document.out <- tex
-			
-		table.out <- data.frame() # avoid error b/c of missing output			
-		return(0)
-		'''
-	),
-	@bind = gseaReports["iAMPvsDS"],
-	@bind = gseaReports["iAMPvsER"],
-	@bind = gseaReports["ERvsDS"],
-	@bind = gseaReports["iAMPvsNoniAMP"],
-	@bind = gseaReports["DSvsNonDS"],
-	@bind = gseaReports["ERvsNonER"]
-)					    			    
-
-gseaReport = LatexCombiner
+gseaHeatmapMSigDBGO = GSEAHeatmap
 (
-	latex1       = gseaHeatmaps.document,
-	array        = gseaReports,
+	title = "MSigDB 5.0 GO Terms",
+	caption = "MSigDB 5.0 gene ontology gene sets.",
+	enrichedUp = gseaMSigDBUp,
+	enrichedDown = gseaMSigDBDn,
+	sectionTitle = "",
+	sectionType = "",
+	regexCategoryNames = "MSIGDB_C5_GO",
+	sigCutoff = 0.001,
+	hsigCutoff = 1e-6,
+	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.001 | FDR.q.val.DSvsNonDS <= 0.001 | FDR.q.val.ERvsNonER <= 0.001| FDR.q.val.iAMPvsDS <= 0.001 | FDR.q.val.iAMPvsER <= 0.001 | FDR.q.val.ERvsDS <= 0.001",
+	cexRow = 0.8
+)
+
+gseaHeatmapMSigDBPositional = GSEAHeatmap
+(
+	title = "MSigDB 5.0 positional gene sets",
+	caption = "MSigDB 5.0 positional gene sets.",
+	enrichedUp = gseaMSigDBUp,
+	enrichedDown = gseaMSigDBDn,
+	sectionTitle = "",
+	sectionType = "",
+	regexCategoryNames = "MSIGDB_C1_POSITIONAL",
+	sigCutoff = 0.001,
+	hsigCutoff = 1e-8,
+	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.001 | FDR.q.val.DSvsNonDS <= 0.001 | FDR.q.val.ERvsNonER <= 0.001| FDR.q.val.iAMPvsDS <= 0.001 | FDR.q.val.iAMPvsER <= 0.001 | FDR.q.val.ERvsDS <= 0.001",
+	cexRow = 0.9,
+	pdfWidth = 10,
+	pdfHeight = 15,
+	figureHeight = 24
+)
+
+gseaHeatmapMSigDBMir = GSEAHeatmap
+(
+	title = "MSigDB 5.0 miRNA target gene sets",
+	caption = "MSigDB 5.0 miRNA target gene sets.",
+	enrichedUp = gseaMSigDBUp,
+	enrichedDown = gseaMSigDBDn,
+	sectionTitle = "",
+	sectionType = "",
+	regexCategoryNames = "MSIGDB_C3_MOTIF_MIR",
+	sigCutoff = 0.1,
+	hsigCutoff = 0.01,
+	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.1 | FDR.q.val.DSvsNonDS <= 0.1 | FDR.q.val.ERvsNonER <= 0.1| FDR.q.val.iAMPvsDS <= 0.1 | FDR.q.val.iAMPvsER <= 0.1 | FDR.q.val.ERvsDS <= 0.1",
+	cexRow = 0.9,
+	pdfWidth = 10,
+	pdfHeight = 15,
+	figureHeight = 24
+)
+
+gseaHeatmapCustom = GSEAHeatmap
+(
+	title = "Custom gene sets",
+	caption = "Custom gene sets.",
+	enrichedUp = gseaMSigDBUp,
+	enrichedDown = gseaMSigDBDn,
+	sectionTitle = "",
+	sectionType = "",
+	regexGeneSetNames = "(PREDICTED|VALIDATED|HENNING)",
+	sigCutoff = 0.3,
+	hsigCutoff = 0.05,
+	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.3 | FDR.q.val.DSvsNonDS <= 0.3 | FDR.q.val.ERvsNonER <= 0.3 | FDR.q.val.iAMPvsDS <= 0.3 | FDR.q.val.iAMPvsER <= 0.3 | FDR.q.val.ERvsDS <= 0.3",
+	cexRow = 0.9,
+	pdfWidth = 10,
+	pdfHeight = 8,
+	figureHeight = 18
+)
+
+gseaHeatmapMSigDBSignaling = GSEAHeatmap
+(
+	title = "MSigDB 5.0 Signaling",
+	caption = "MSigDB 5.0 signaling gene sets.",
+	enrichedUp = gseaMSigDBUp,
+	enrichedDown = gseaMSigDBDn,
+	sectionTitle = "",
+	sectionType = "",
+	regexGeneSetNames = "SIGNALING",
+	sigCutoff = 0.01,
+	hsigCutoff = 1e-6,
+	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.01 | FDR.q.val.DSvsNonDS <= 0.01 | FDR.q.val.ERvsNonER <= 0.01| FDR.q.val.iAMPvsDS <= 0.01 | FDR.q.val.iAMPvsER <= 0.01 | FDR.q.val.ERvsDS <= 0.01"
+)
+
+gseaHeatmapTFtarget = GSEAHeatmap
+(
+	title = "MSigDB 5.0 TF targets",
+	caption = "MSigDB 5.0 transcription factor target gene sets.",
+	enrichedUp = gseaMSigDBUp,
+	enrichedDown = gseaMSigDBDn,
+	sectionTitle = "",
+	sectionType = "",
+	regexCategoryNames = "MSIGDB_C3_MOTIF_TFT",
+	sigCutoff = 0.01,
+	hsigCutoff = 0.001,
+	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.01 | FDR.q.val.DSvsNonDS <= 0.01 | FDR.q.val.ERvsNonER <= 0.01 | FDR.q.val.iAMPvsDS <= 0.01 | FDR.q.val.iAMPvsER <= 0.01 | FDR.q.val.ERvsDS <= 0.01",
+	cexRow = 0.8
+)
+
+gseaHeatmapMSigDBChemPert = GSEAHeatmap
+(
+	title = "MSigDB 5.0 Chemical Perturbation",
+	caption = "MSigDB 5.0 chemical perturbation gene sets.",
+	enrichedUp = gseaMSigDBUp,
+	enrichedDown = gseaMSigDBDn,
+	sectionTitle = "",
+	sectionType = "",
+	regexCategoryNames = "MSIGDB_C2_CGP",
+	regexGeneSetNames = "(_UP|_DN)$",
+	sigCutoff = 0.001,
+	hsigCutoff = 1e-6,
+	NESCutoff = 2.5,
+	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.001 | FDR.q.val.DSvsNonDS <= 0.001 | FDR.q.val.ERvsNonER <= 0.001| FDR.q.val.iAMPvsDS <= 0.001 | FDR.q.val.iAMPvsER <= 0.001 | FDR.q.val.ERvsDS <= 0.001",
+	cexRow = 0.7
+)
+
+gseaHeatmapMSigDBOther = GSEAHeatmap
+(
+	title = "MSigDB 5.0 Other",
+	caption = "Other enriched MSigDB 5.0 gene sets.",
+	enrichedUp = gseaMSigDBUp,
+	enrichedDown = gseaMSigDBDn,
+	sectionTitle = "",
+	sectionType = "",
+	regexCategoryNamesExclude = "(MSIGDB_C1_POSITIONAL|MSIGDB_C2_PATHWAYS|MSIGDB_C3_MOTIF|MSIGDB_C4_COMPUTATIONAL|MSIGDB_C5_GO)",
+	regexGeneSetNamesExclude = "(_UP|_DN)$",
+	sigCutoff = 0.001,
+	hsigCutoff = 1e-6,
+	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.001 | FDR.q.val.DSvsNonDS <= 0.001 | FDR.q.val.ERvsNonER <= 0.001| FDR.q.val.iAMPvsDS <= 0.001 | FDR.q.val.iAMPvsER <= 0.001 | FDR.q.val.ERvsDS <= 0.001",
+	cexRow = 0.7
+)
+
+gseaHeatmapsMSigDB = LatexCombiner
+(
+	array = {gseaHeatmapMSigDBPathway, gseaHeatmapMSigDBGO, gseaHeatmapMSigDBPositional, gseaHeatmapMSigDBMir, gseaHeatmapCustom, gseaHeatmapMSigDBSignaling, gseaHeatmapTFtarget, gseaHeatmapMSigDBChemPert, gseaHeatmapMSigDBOther},
+	sectionTitle="Graphical overview of MSigDB enrichment results", 
+	sectionType="subsection"
+)
+
+gseaReportMSigDB = LatexCombiner
+(
+	array        = {gseaHeatmapsMSigDB, gseaReportsMSigDB},
 	pagebreak    = true,
 	tail         = '\newpage{}',
-	sectionTitle = "Gene set enrichment analysis (GSEA)"
+	sectionTitle = "GSEA MSigDB 5.0"
 )
+
+gseaHeatmapGeneSigDB = GSEAHeatmap
+(
+	title = "GeneSigDB 4.0 Gene Sets",
+	caption = "GeneSigDB 4.0 enriched gene sets.",
+	enrichedUp = gseaGeneSigDBUp,
+	enrichedDown = gseaGeneSigDBDn,
+	sectionTitle = "Graphical overview of GeneSigDB enrichment results",
+	sectionType = "subsection",
+	sigCutoff = 0.0001,
+	hsigCutoff = 1e-6,
+	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.0001 | FDR.q.val.DSvsNonDS <= 0.0001 | FDR.q.val.ERvsNonER <= 0.0001| FDR.q.val.iAMPvsDS <= 0.0001 | FDR.q.val.iAMPvsER <= 0.0001 | FDR.q.val.ERvsDS <= 0.0001",
+	cexRow = 0.7,
+	pdfWidth = 10,
+	pdfHeight = 15,
+	figureHeight = 24
+)
+
+gseaReportGeneSigDB = LatexCombiner
+(
+	array        = {gseaHeatmapGeneSigDB, gseaReportsGeneSigDB},
+	pagebreak    = true,
+	tail         = '\newpage{}',
+	sectionTitle = "GSEA GeneSigDB 4.0"
+)
+
 
 //------------------------------------------------------------------------------------------------
 //--- DEG REPORTS OF miRNA TARGETS GENES
@@ -747,6 +919,7 @@ boxplotCRA = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
 	groups = sampleGroupsSimple  @require @doc="Sample sets",
+	groupOrder = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot           @require @doc="Gene annotations",
 	geneIds = genesCRA,
 	nCol = 10,
@@ -761,6 +934,7 @@ boxplotRibosomalProteins = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr,
 	groups = sampleGroupsSimple,
+	groupOrder = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot,
 	hgnc = "RPL10,RPL10A,RPL10L,RPL11,RPL12,RPL13,RPL13A,RPL14,RPL15,RPL17,RPL18,RPL18A,RPL19,RPL21,RPL22,RPL22L1,RPL23,RPL23A,RPL24,RPL26,RPL26L1,RPL27,RPL27A,RPL28,RPL29,RPL3,RPL30,RPL31,RPL32,RPL34,RPL35,RPL35A,RPL36,RPL36A,RPL36AL,RPL37,RPL37A,RPL38,RPL39,RPL39L,RPL3L,RPL4,RPL41,RPL5,RPL6,RPL7,RPL7A,RPL7L1,RPL8,RPL9,RPLP0,RPLP1,RPLP2,RPS10,RPS11,RPS12,RPS13,RPS14,RPS15,RPS15A,RPS16,RPS17,RPS17L,RPS18,RPS19,RPS19BP1,RPS2,RPS20,RPS21,RPS23,RPS24,RPS25,RPS26,RPS27,RPS27A,RPS27L,RPS28,RPS29,RPS3,RPS3A,RPS4X,RPS4Y1,RPS4Y2,RPS5,RPS6,RPS6KA1,RPS6KA2,RPS6KA3,RPS6KA4,RPS6KA5,RPS6KA6,RPS6KB1,RPS6KB2,RPS6KC1,RPS6KL1,RPS7,RPS8,RPS9,RPSA",
 	nRow = 7,
@@ -771,15 +945,31 @@ boxplotRibosomalProteins = ExpressionBoxPlot
 	sectionType="subsection"
 )
 
+boxplotEpigeneticModifiers = ExpressionBoxPlot
+(
+	expr   = deseqExprMatrix.expr,
+	groups = sampleGroupsSimple,
+	groupOrder = "CD19,ER,DS,iAMP",
+	annotation = geneAnnot,
+	hgnc = "HDAC1,HDAC2,HDAC3,HDAC4,HDAC5,HDAC6,HDAC7,HDAC8,HDAC9,HDAC10,HDAC11,EP300,EZH1,EZH2,SUZ12,EED,EHMT1,EHMT2,KMT2A,KMT2D,KMT2C,DNMT1,DNMT3A,DNMT3B,TET1,TET2,CREBBP",
+	nRow = 4,
+	nCol = 7,
+	height=9,
+	caption = 'Expression of epigenetic modifier genes. EHMT2=G9A; KMT2A=MLL1; KMT2D=MLL2; KMT2C=MLL3.',
+	sectionTitle="Epigenetic modifiers", 
+	sectionType="subsection"
+)
+
 boxplotOther = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
 	groups = sampleGroupsSimple  @require @doc="Sample sets",
+	groupOrder = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot           @require @doc="Gene annotations",
-	hgnc = "ETV6,RUNX1,CRLF2,P2RY8,EBF1,PAX5,VPREB1,HMGN1,MME,CD34,CD19,MS4A1",
-	nCol = 4,
-	nRow = 3,
-	caption = 'Expression of manually selected genes. MME=CD10; MS4A1=CD20',
+	hgnc = "ETV6,RUNX1,CRLF2,P2RY8,EBF1,PAX5,VPREB1,HMGN1,MME,CD34,CD19,MS4A1,SPI1,ETS2,GATA2,GAPDH,KIT,ERG,LGMN,TEK,CD40,TRAF1,TRAF2,TRAF3,TRAF5,MLLT6,MYC,GUSB",
+	nCol = 6,
+	nRow = 5,
+	caption = 'Expression of other selected genes of interest. MME=CD10; MS4A1=CD20; KIT=c-Kit; TEK=Tie-2; PU.1=SPI1',
 	sectionTitle="Other genes of interest", 
 	sectionType="subsection"
 )
@@ -787,7 +977,7 @@ boxplotOther = ExpressionBoxPlot
 
 boxplotSelectedGenes = LatexCombiner
 (
-	array        = {boxplotCRA.document, boxplotRibosomalProteins.document, boxplotOther.document}, 
+	array        = {boxplotCRA.document, boxplotRibosomalProteins.document, boxplotEpigeneticModifiers.document, boxplotOther.document}, 
 	pagebreak    = true,
 	sectionTitle = "Expression values of selected genes", 
 	sectionType  = "section"
@@ -801,16 +991,15 @@ include "pgeReport.and"
 
 pgeReportLst = record()
 for comparison : std.itercsv(comparisons) {
-	gLab = std.strReplace(comparison.ID, "^fc", "")
 	
-	pgeReportLst[gLab] = PGEReport
+	pgeReportLst[comparison.ID] = PGEReport
 	(
-		query=degCalledLst[gLab], 
+		query=degCalledLst[comparison.ID], 
 		reference=gtf, 
-		title=gLab,
-		pvalue=0.001,
+		title=comparison.ID,
+		pvalue=0.01,
 		includeHeader=std.length(pgeReportLst)==0,
-		@name="pge_"+gLab
+		@name="pge_"+comparison.ID
 	)
 }
 	
@@ -864,7 +1053,8 @@ combinedReport = LatexCombiner
 		boxplotSelectedGenes,
 		pgeReport,
 		degReportMir,
-		gseaReport,
+		gseaReportMSigDB,
+		gseaReportGeneSigDB,
 		rConfig.report
 	}
 )

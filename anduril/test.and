@@ -40,9 +40,6 @@
 //
 //run_second(resultsFirst=out)
 
-mirTargets = INPUT(path="/mnt/projects/iamp/data/miRecords/miRecords.predictedTargets.txt")
-miRs = TableQuery(table1 = mirTargets, query = '''SELECT DISTINCT "miRNA ID" FROM table1''')
-
-for miR : std.itercsv(miRs) {
-	std.echo(miR["miRNA ID"])
-}
+bam = INPUT(path="/data_synology/anduril/anduril-bundles/ccri/components/CalcGeneBodyCoverage/testcases/case1/input/bam.bam")
+//cov = CalcGeneBodyCoverage(bam=bam, name="test", @host="biowaste:5000/anduril/rseqc")
+cov2 = CalcGeneBodyCoverage(bam=bam, name="test")

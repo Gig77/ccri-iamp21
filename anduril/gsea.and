@@ -1,49 +1,52 @@
+function processResult(CSV enrichedGeneSets) -> (CSV result)
+{
+	processed = REvaluate
+	(
+		table1 = enrichedGeneSets,
+		script = StringInput(content=
+			'''
+			table.out <- table1
+			
+			# assign gene set to category
+			table.out$CATEGORY <- NA
+			table.out$CATEGORY[grepl("^CHR[\\dXY]", table.out$NAME, perl=T)] <- "POSITIONAL"
+			table.out$CATEGORY[grepl("(^MIR-|,MIR-)", table.out$NAME, perl=T)] <- "MIR_TARGETS"
+			table.out$CATEGORY[grepl("SIGNALING", table.out$NAME, perl=T)] <- "SIGNALING"
+			table.out$CATEGORY[grepl("(REACTOME|KEGG|PID_|BIOCARTA)", table.out$NAME, perl=T)] <- "PATHWAY"
+			table.out$CATEGORY[grepl("V\\$", table.out$NAME, perl=T)] <- "TF_TARGETS"
+			table.out$CATEGORY[grepl("(_UP|_DN)$", table.out$NAME, perl=T)] <- "PERTURBATION"
+			table.out$CATEGORY[grepl("^(CAR_|GCM_|GNF2_|MORF_)", table.out$NAME, perl=T)] <- "CANCER_NEIGHBORHOOD"
+			table.out$CATEGORY[grepl("^MODULE_", table.out$NAME, perl=T)] <- "MODULE"
+			table.out$CATEGORY[grepl("(PREDICTED|VALIDATED|HENNING)", table.out$NAME, perl=T)] <- "CUSTOM"
+			table.out$CATEGORY[is.na(table.out$CATEGORY)] <- "OTHER"
+			
+			# allows Latex to break lines at underscores in column containing gene set names
+			table.out$NAME <- gsub('_', ' ', table.out$NAME, fixed=T)
+			
+			''')
+	)
+	
+	return processed.table
+}
+
 function getGSEAReport
 (
-	CSV    rnk,
+	CSV    enrichedUp,
+	CSV    enrichedDown,
 	string ID,
 	record group,
 	string sectionTitle = "",
 	string sectionType = ""
 ) -> (Latex report)
 {
-	// run GSEA
-	//---
-	gsea = GSEA
-	(
-		rnk = rnk,
-		label = ID
-	)
-
-	// allow Latex to break lines at underscores in column containing gene set names
-	//---
-	gseaReportProcessedUp = REvaluate
-	(
-		table1 = gsea.enrichedUp,
-		script = StringInput(content=
-			'''
-			table.out <- table1
-			table.out$NAME <- gsub('_', ' ', table.out$NAME, fixed=T)
-			''')
-	)
-
-	gseaReportProcessedDn = REvaluate
-	(
-		table1 = gsea.enrichedDown,
-		script = StringInput(content=
-			'''
-			table.out <- table1
-			table.out$NAME <- gsub('_', ' ', table.out$NAME, fixed=T)
-			''')
-	)
+	gseaReportProcessedUp = processResult(enrichedGeneSets = enrichedUp)
+	gseaReportProcessedDn = processResult(enrichedGeneSets = enrichedDown)
 
 	// create reports by category
 	//---
-
 	genesetsByDirection = record()
-	genesetsByDirection["up"] = gseaReportProcessedUp.table
-	genesetsByDirection["down"] = gseaReportProcessedDn.table
-
+	genesetsByDirection["up"] = gseaReportProcessedUp.result
+	genesetsByDirection["down"] = gseaReportProcessedDn.result
 
 	gseaReportAll = record()
 	
@@ -58,7 +61,7 @@ function getGSEAReport
 		gseaReportChrTable = REvaluate
 		(
 			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[grepl("^CHR[\\dXY]", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdrChr + ''',]'''),
+			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="POSITIONAL" & table1$'FDR q-val' <= ''' + fdrChr + ''',]'''),
 			@name = "gseaReportChrTable" + dir
 		)
 	
@@ -96,7 +99,7 @@ function getGSEAReport
 		gseaReportMirTable = REvaluate
 		(
 			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[grepl("^MIR-", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdrMir + ''',]'''),
+			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="MIR_TARGETS" & table1$'FDR q-val' <= ''' + fdrMir + ''',]'''),
 			@name = "gseaReportMirTable" + dir
 		)
 
@@ -121,7 +124,6 @@ function getGSEAReport
 		sectionTitle   = "miRNA target gene sets",
 		sectionType = "subsubsection"		
 	)
-	
 
 	//-----------------------------------
 	// CUSTOM GENE SETS
@@ -134,7 +136,7 @@ function getGSEAReport
 		gseaReportCustomTable = REvaluate
 		(
 			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[grepl("(PREDICTED|VALIDATED|HENNING)", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdrCustom + ''',]'''),
+			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="CUSTOM" & table1$'FDR q-val' <= ''' + fdrCustom + ''',]'''),
 			@name = "gseaReportCustomTable" + dir
 		)
 
@@ -171,7 +173,7 @@ function getGSEAReport
 		gseaReportSignalingTable = REvaluate
 		(
 			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[grepl("SIGNALING", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdrSignaling + ''',]'''),
+			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="SIGNALING" & table1$'FDR q-val' <= ''' + fdrSignaling + ''',]'''),
 			@name = "gseaReportSignalingTable" + dir
 		)
 
@@ -208,7 +210,7 @@ function getGSEAReport
 		gseaReportPathwayTable = REvaluate
 		(
 			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[grepl("(REACTOME|KEGG|PID_|BIOCARTA)", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdrPathway + ''',]'''),
+			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="PATHWAY" & table1$'FDR q-val' <= ''' + fdrPathway + ''',]'''),
 			@name = "gseaReportPathwayTable" + dir
 		)
 
@@ -245,7 +247,7 @@ function getGSEAReport
 		gseaReportTFtargetTable = REvaluate
 		(
 			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[grepl("V\\$", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdrTFtarget + ''',]'''),
+			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="TF_TARGETS" & table1$'FDR q-val' <= ''' + fdrTFtarget + ''',]'''),
 			@name = "gseaReportTFtargetTable" + dir
 		)
 
@@ -284,7 +286,7 @@ function getGSEAReport
 		gseaReportChemPertTable = REvaluate
 		(
 			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[grepl("( UP| DN)$", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdrChemPert + ''' & abs(table1$NES) >= ''' + nesChemPert + ''',]'''),
+			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="PERTURBATION" & table1$'FDR q-val' <= ''' + fdrChemPert + ''' & abs(table1$NES) >= ''' + nesChemPert + ''',]'''),
 			@name = "gseaReportChemPertTable" + dir
 		)
 
@@ -312,6 +314,44 @@ function getGSEAReport
 		sectionType = "subsubsection"		
 	)
 		
+	//-----------------------------------
+	// OTHER
+	//-----------------------------------
+
+	fdrOther = 1e-5
+	nesOther = 0
+	gseaReportsOther = record()
+	for dir, genesets : genesetsByDirection 
+	{
+		gseaReportOtherTable = REvaluate
+		(
+			table1 = genesets,
+			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="OTHER" & table1$'FDR q-val' <= ''' + fdrOther + ''' & abs(table1$NES) >= ''' + nesOther + ''',]'''),
+			@name = "gseaReportOtherTable" + dir
+		)
+
+		gseaReportsOther[dir] = latexTable 
+		(
+			tabledata = gseaReportOtherTable.table,
+			caption   = "Other, uncategorized MSigDB 5.0 gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdrOther,
+			minNES    = nesOther,
+			@name     = "gseaReportsOther"+dir
+		) 
+	}
+
+	gseaReportsOtherWithHeader = LatexCombiner
+	(
+		head = "Miscellaneous MSigDB 5.0 gene sets not assigned to a particular category.",
+		array = gseaReportsOther
+	)
+	
+	gseaReportAll["Other"] = LatexCombiner
+	(
+		array = gseaReportsOtherWithHeader,
+		sectionTitle   = "Uncategorized gene sets",
+		sectionType = "subsubsection"		
+	)
 
 	// final report
 	//---	

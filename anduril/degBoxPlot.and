@@ -29,6 +29,7 @@ function getDEGBoxPlots
 	(
   		expr   = exprMatrix,
 		groups = sampleGroupsSimple,
+		groupOrder = "CD19,ER,DS,iAMP",
 		annotation = geneAnnot,
 		geneIds = degsFiltered,
 		nRow = 4,
