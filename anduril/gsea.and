@@ -1,369 +1,741 @@
-function processResult(CSV enrichedGeneSets) -> (CSV result)
-{
-	processed = REvaluate
-	(
-		table1 = enrichedGeneSets,
-		script = StringInput(content=
-			'''
-			table.out <- table1
-			
-			# assign gene set to category
-			table.out$CATEGORY <- NA
-			table.out$CATEGORY[grepl("^CHR[\\dXY]", table.out$NAME, perl=T)] <- "POSITIONAL"
-			table.out$CATEGORY[grepl("(^MIR-|,MIR-)", table.out$NAME, perl=T)] <- "MIR_TARGETS"
-			table.out$CATEGORY[grepl("SIGNALING", table.out$NAME, perl=T)] <- "SIGNALING"
-			table.out$CATEGORY[grepl("(REACTOME|KEGG|PID_|BIOCARTA)", table.out$NAME, perl=T)] <- "PATHWAY"
-			table.out$CATEGORY[grepl("V\\$", table.out$NAME, perl=T)] <- "TF_TARGETS"
-			table.out$CATEGORY[grepl("(_UP|_DN)$", table.out$NAME, perl=T)] <- "PERTURBATION"
-			table.out$CATEGORY[grepl("^(CAR_|GCM_|GNF2_|MORF_)", table.out$NAME, perl=T)] <- "CANCER_NEIGHBORHOOD"
-			table.out$CATEGORY[grepl("^MODULE_", table.out$NAME, perl=T)] <- "MODULE"
-			table.out$CATEGORY[grepl("(PREDICTED|VALIDATED|HENNING)", table.out$NAME, perl=T)] <- "CUSTOM"
-			table.out$CATEGORY[is.na(table.out$CATEGORY)] <- "OTHER"
-			
-			# allows Latex to break lines at underscores in column containing gene set names
-			table.out$NAME <- gsub('_', ' ', table.out$NAME, fixed=T)
-			
-			''')
-	)
-	
-	return processed.table
-}
-
-function getGSEAReport
+function getGSEAReportMSigDB
 (
-	CSV    enrichedUp,
-	CSV    enrichedDown,
-	string ID,
-	record group,
-	string sectionTitle = "",
-	string sectionType = ""
+	record enrichedUp,
+	record enrichedDn,
+	record groups
 ) -> (Latex report)
 {
-	gseaReportProcessedUp = processResult(enrichedGeneSets = enrichedUp)
-	gseaReportProcessedDn = processResult(enrichedGeneSets = enrichedDown)
+	reports = record()
 
-	// create reports by category
-	//---
-	genesetsByDirection = record()
-	genesetsByDirection["up"] = gseaReportProcessedUp.result
-	genesetsByDirection["down"] = gseaReportProcessedDn.result
-
-	gseaReportAll = record()
-	
-	//-----------------------------------
-	// POSITIONAL GENE SETS (C1)
-	//-----------------------------------
-
-	fdrChr = 0.001
-	gseaReportsChr = record()
-	for dir, genesets : genesetsByDirection 
-	{
-		gseaReportChrTable = REvaluate
-		(
-			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="POSITIONAL" & table1$'FDR q-val' <= ''' + fdrChr + ''',]'''),
-			@name = "gseaReportChrTable" + dir
-		)
-	
-		gseaReportsChr[dir] = latexTable 
-		(
-			tabledata = gseaReportChrTable.table,
-			caption   = "MSigDB 5.0 positional gene sets (C1) enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
-			minFDR    = fdrChr,
-			@name     = "gseaReportsChr"+dir
-		) 		
-	}
-	
-	gseaReportsChrWithHeader = LatexCombiner
-	(
-		head = "Gene sets corresponding to each human chromosome and each cytogenetic band that has at least one gene.",
-		array = gseaReportsChr
-	)
-	
-	gseaReportAll["Chr"] = LatexCombiner
-	(
-		array = gseaReportsChrWithHeader,
-		sectionTitle = "Positional gene sets",
-		sectionType = "subsubsection"
-	)
-	
-
-	//-----------------------------------
-	// MIR TARGET GENE SETS
-	//-----------------------------------
-
-	fdrMir = 0.1
-	gseaReportsMir = record()
-	for dir, genesets : genesetsByDirection 
-	{
-		gseaReportMirTable = REvaluate
-		(
-			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="MIR_TARGETS" & table1$'FDR q-val' <= ''' + fdrMir + ''',]'''),
-			@name = "gseaReportMirTable" + dir
-		)
-
-		gseaReportsMir[dir] = latexTable 
-		(
-			tabledata = gseaReportMirTable.table,
-			caption   = "MSigDB 5.0 miRNA target gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
-			minFDR    = fdrMir,
-			@name     = "gseaReportsMir"+dir
-		) 		
-	}
-
-	gseaReportsMirWithHeader = LatexCombiner
-	(
-		head = "Sets of genes that share a 3'-UTR microRNA binding motif.",
-		array = gseaReportsMir
-	)
-	
-	gseaReportAll["Mir"] = LatexCombiner
-	(
-		array = gseaReportsMirWithHeader,
-		sectionTitle   = "miRNA target gene sets",
-		sectionType = "subsubsection"		
-	)
-
-	//-----------------------------------
-	// CUSTOM GENE SETS
-	//-----------------------------------
-
-	fdrCustom = 0.3
-	gseaReportsCustom = record()
-	for dir, genesets : genesetsByDirection 
-	{
-		gseaReportCustomTable = REvaluate
-		(
-			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="CUSTOM" & table1$'FDR q-val' <= ''' + fdrCustom + ''',]'''),
-			@name = "gseaReportCustomTable" + dir
-		)
-
-		gseaReportsCustom[dir] = latexTable 
-		(
-			tabledata = gseaReportCustomTable.table,
-			caption   = "Custom gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
-			minFDR    = fdrCustom,
-			@name     = "gseaReportsCustom"+dir
-		) 		
-	}
-
-	gseaReportsCustomWithHeader = LatexCombiner
-	(
-		head = "User-defined gene sets not part of MSigDB.",
-		array = gseaReportsCustom
-	)
-	
-	gseaReportAll["Custom"] = LatexCombiner
-	(
-		array = gseaReportsCustomWithHeader,
-		sectionTitle   = "Custom gene sets",
-		sectionType = "subsubsection"		
-	)
-
-	//-----------------------------------
-	// SIGNALING
-	//-----------------------------------
-
-	fdrSignaling = 0.01
-	gseaReportsSignaling = record()
-	for dir, genesets : genesetsByDirection 
-	{
-		gseaReportSignalingTable = REvaluate
-		(
-			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="SIGNALING" & table1$'FDR q-val' <= ''' + fdrSignaling + ''',]'''),
-			@name = "gseaReportSignalingTable" + dir
-		)
-
-		gseaReportsSignaling[dir] = latexTable 
-		(
-			tabledata = gseaReportSignalingTable.table,
-			caption   = "MSigDB 5.0 signaling gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
-			minFDR    = fdrSignaling,
-			@name     = "gseaReportsSignaling"+dir
-		) 		
-	}
-
-	gseaReportsSignalingWithHeader = LatexCombiner
-	(
-		head = "All gene sets in this category contain the phrase 'SIGNALING' as part of their name.",
-		array = gseaReportsSignaling
-	)
-	
-	gseaReportAll["Signaling"] = LatexCombiner
-	(
-		array = gseaReportsSignalingWithHeader,
-		sectionTitle   = "Signaling gene sets",
-		sectionType = "subsubsection"		
-	)
-
-	//-----------------------------------
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
 	// PATHWAYS
-	//-----------------------------------
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Pathway"
+	title = "MSigDB 5.0 pathway gene sets"
+	description = "Gene sets in this category represent canonical representations of a biological process compiled by domain experts. Pathway source databases include KEGG, REACTOME, BIOCARTA, and PID."
+	fdr = 0.001
+	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="MSIGDB_C2_PATHWAYS" & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
 
-	fdrPathway = 0.001
-	gseaReportsPathway = record()
-	for dir, genesets : genesetsByDirection 
-	{
-		gseaReportPathwayTable = REvaluate
-		(
-			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="PATHWAY" & table1$'FDR q-val' <= ''' + fdrPathway + ''',]'''),
-			@name = "gseaReportPathwayTable" + dir
-		)
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-6,
+		regexCategoryNames = "MSIGDB_C2_PATHWAYS",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.7,
+		pdfWidth = 10,
+		pdfHeight = 15,
+		figureHeight = 24,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
 
-		gseaReportsPathway[dir] = latexTable 
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
 		(
-			tabledata = gseaReportPathwayTable.table,
-			caption   = "MSigDB 5.0 canonical pathways enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
-			minFDR    = fdrPathway,
-			@name     = "gseaReportsPathway"+dir
+			tabledata = filteredUp.table, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
 		) 		
-	}
 
-	gseaReportsPathwayWithHeader = LatexCombiner
-	(
-		head = "Gene sets in this category represent canonical representations of a biological process compiled by domain experts. Pathway source databases include KEGG, REACTOME, BIOCARTA, and PID.",
-		array = gseaReportsPathway
-	)
-	
-	gseaReportAll["Pathway"] = LatexCombiner
-	(
-		array = gseaReportsPathwayWithHeader,
-		sectionTitle   = "Pathway gene sets",
-		sectionType = "subsubsection"		
-	)
-
-	//-----------------------------------
-	// TRANSCRIPTION FACTOR TARGETS
-	//-----------------------------------
-
-	fdrTFtarget = 0.01
-	gseaReportsTFtarget = record()
-	for dir, genesets : genesetsByDirection 
-	{
-		gseaReportTFtargetTable = REvaluate
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
 		(
-			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="TF_TARGETS" & table1$'FDR q-val' <= ''' + fdrTFtarget + ''',]'''),
-			@name = "gseaReportTFtargetTable" + dir
+			tabledata = filteredDn.table, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
 		)
 
-		gseaReportsTFtarget[dir] = latexTable 
+		tableReports[ID] = LatexCombiner 
 		(
-			tabledata = gseaReportTFtargetTable.table,
-			caption   = "MSigDB 5.0 transcription factor target gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
-			minFDR    = fdrTFtarget,
-			@name     = "gseaReportsTFtarget"+dir
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// GO TERMS
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "GO"
+	title = "MSigDB 5.0 GO terms"
+	description = "Gene sets are named by gene ontology (GO) terms and contain genes annotated by that term. Includes gene sets derived from GO biological processes (BP), cellular components (CC), and molecular functions (MF)."
+	fdr = 0.001
+	filter = StringInput(content='''table.out <- table1[grepl("MSIGDB_C5_GO", table1$CATEGORY, perl=T) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-6,
+		regexCategoryNames = "MSIGDB_C5_GO",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.8,
+		pdfWidth = 10,
+		pdfHeight = 15,
+		figureHeight = 24,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
 		) 		
-	}
 
-	gseaReportsTFtargetWithHeader = LatexCombiner
-	(
-		head = "These gene sets contain genes that share a transcription factor binding site defined in the TRANSFAC (version 7.4, http://www.gene-regulation.com/) " +
-			   "database. Each of these gene sets is annotated by a TRANSFAC record.",
-		array = gseaReportsTFtarget
-	)
-	
-	gseaReportAll["TFtarget"] = LatexCombiner
-	(
-		array = gseaReportsTFtargetWithHeader,
-		sectionTitle   = "TF target gene sets",
-		sectionType = "subsubsection"		
-	)
-
-	//-----------------------------------
-	// CHEMICAL PERTURBATIONS
-	//-----------------------------------
-
-	fdrChemPert = 1e-6
-	nesChemPert = 0
-	gseaReportsChemPert = record()
-	for dir, genesets : genesetsByDirection 
-	{
-		gseaReportChemPertTable = REvaluate
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
 		(
-			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="PERTURBATION" & table1$'FDR q-val' <= ''' + fdrChemPert + ''' & abs(table1$NES) >= ''' + nesChemPert + ''',]'''),
-			@name = "gseaReportChemPertTable" + dir
+			tabledata = filteredDn.table, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
 		)
 
-		gseaReportsChemPert[dir] = latexTable 
+		tableReports[ID] = LatexCombiner 
 		(
-			tabledata = gseaReportChemPertTable.table,
-			caption   = "MSigDB 5.0 chemical perturbation gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
-			minFDR    = fdrChemPert,
-			minNES    = nesChemPert,
-			@name     = "gseaReportsChemPert"+dir
-		) 
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
 	}
 
-	gseaReportsChemPertWithHeader = LatexCombiner
+	heatmapWithHeader = LatexCombiner
 	(
-		head = "These gene sets represent expression signatures of genetic and chemical perturbations. A number of these gene sets come in pairs: an xxx\\_UP (xxx\\_DN) gene set " +
-			   "representing genes induced (repressed) by the perturbation. The MSigDB gene set page for each gene set lists the PubMed citation on which it is based.",
-		array = gseaReportsChemPert
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
 	)
 	
-	gseaReportAll["ChemPert"] = LatexCombiner
+	reports[category] = LatexCombiner
 	(
-		array = gseaReportsChemPertWithHeader,
-		sectionTitle   = "Chemical perturbation gene sets",
-		sectionType = "subsubsection"		
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
 	)
-		
-	//-----------------------------------
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// POSITIONAL GENE SETS (C1)
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Positional"
+	title = "MSigDB 5.0 positional gene sets"
+	description = "Gene sets corresponding to each human chromosome and each cytogenetic band that has at least one gene."
+	fdr = 0.001
+	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="MSIGDB_C1_POSITIONAL" & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-8,
+		regexCategoryNames = "MSIGDB_C1_POSITIONAL",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.9,
+		pdfWidth = 10,
+		pdfHeight = 15,
+		figureHeight = 24,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+	
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// MIR TARGETS
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Mir"
+	title = "MSigDB 5.0 miRNA targets"
+	description = "Sets of genes that share a 3'-UTR microRNA binding motif."
+	fdr = 0.1
+	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="MSIGDB_C3_MOTIF_MIR" & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 0.01,
+		regexCategoryNames = "MSIGDB_C3_MOTIF_MIR",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.9,
+		pdfWidth = 10,
+		pdfHeight = 15,
+		figureHeight = 24,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// CUSTOM GENE SETS
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Custom"
+	title = "Custom gene sets"
+	description = "Custom (project-specific) gene sets not part of MSigDB."
+	fdr = 0.3
+	filter = StringInput(content='''table.out <- table1[grepl("(PREDICTED|VALIDATED|HENNING)", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 0.05,
+		regexGeneSetNames = "(PREDICTED|VALIDATED|HENNING)",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.9,
+		pdfWidth = 10,
+		pdfHeight = 8,
+		figureHeight = 18,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// SIGNALING
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Signaling"
+	title = "MSigDB 5.0 signaling gene sets"
+	description = "MSigDB 5.0 gene sets in this category contain the phrase 'SIGNALING' in their name."
+	fdr = 0.01
+	filter = StringInput(content='''table.out <- table1[grepl("SIGNALING", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-6,
+		regexGeneSetNames = "SIGNALING",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.7,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// TF TARGETS
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "TFT"
+	title = "MSigDB 5.0 TF targets"
+	description = "These gene sets contain genes that share a transcription factor binding site defined in the TRANSFAC (version 7.4, http://www.gene-regulation.com/) " +
+			      "database. Each of these gene sets is annotated by a TRANSFAC record."
+	fdr = 0.01
+	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="MSIGDB_C3_MOTIF_TFT" & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 0.001,
+		regexCategoryNames = "MSIGDB_C3_MOTIF_TFT",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// CHEMICAL PERTURBATION
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "ChemPert"
+	title = "MSigDB 5.0 chemical perturbation"
+	description = "These gene sets represent expression signatures of genetic and chemical perturbations. A number of these gene sets come in pairs: an xxx\\_UP (xxx\\_DN) gene set " +
+			      "representing genes induced (repressed) by the perturbation. The MSigDB gene set page for each gene set lists the PubMed citation on which it is based."
+	fdr = 0.001
+	nes = 2.5
+	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="MSIGDB_C2_CGP" & grepl("(_UP|_DN)$", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdr + ''' & table1$NES >= '''+nes+''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-6,
+		NESCutoff = nes,
+		regexCategoryNames = "MSIGDB_C2_CGP",
+		regexGeneSetNames = "(_UP|_DN)$",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.7,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
 	// OTHER
-	//-----------------------------------
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Other"
+	title = "Other MSigDB 5.0 gene sets"
+	description = "These MSigDB 5.0 gene sets were significantly enriched and not assigned to any of the above categories."
+	fdr = 0.001
+	filter = StringInput(content='''table.out <- table1[!grepl("(MSIGDB_C1_POSITIONAL|MSIGDB_C2_PATHWAYS|MSIGDB_C3_MOTIF|MSIGDB_C4_COMPUTATIONAL|MSIGDB_C5_GO)", table1$CATEGORY, perl=T) & !grepl("(_UP|_DN)$", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
 
-	fdrOther = 1e-5
-	nesOther = 0
-	gseaReportsOther = record()
-	for dir, genesets : genesetsByDirection 
-	{
-		gseaReportOtherTable = REvaluate
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-6,
+		regexCategoryNamesExclude = "(MSIGDB_C1_POSITIONAL|MSIGDB_C2_PATHWAYS|MSIGDB_C3_MOTIF|MSIGDB_C4_COMPUTATIONAL|MSIGDB_C5_GO)",
+		regexGeneSetNamesExclude = "(_UP|_DN)$",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.7,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
 		(
-			table1 = genesets,
-			script = StringInput(content='''table.out <- table1[table1$CATEGORY=="OTHER" & table1$'FDR q-val' <= ''' + fdrOther + ''' & abs(table1$NES) >= ''' + nesOther + ''',]'''),
-			@name = "gseaReportOtherTable" + dir
+			tabledata = filteredUp.table, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
 		)
 
-		gseaReportsOther[dir] = latexTable 
+		tableReports[ID] = LatexCombiner 
 		(
-			tabledata = gseaReportOtherTable.table,
-			caption   = "Other, uncategorized MSigDB 5.0 gene sets enriched for genes " + dir + "-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
-			minFDR    = fdrOther,
-			minNES    = nesOther,
-			@name     = "gseaReportsOther"+dir
-		) 
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
 	}
 
-	gseaReportsOtherWithHeader = LatexCombiner
+	heatmapWithHeader = LatexCombiner
 	(
-		head = "Miscellaneous MSigDB 5.0 gene sets not assigned to a particular category.",
-		array = gseaReportsOther
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
 	)
 	
-	gseaReportAll["Other"] = LatexCombiner
+	reports[category] = LatexCombiner
 	(
-		array = gseaReportsOtherWithHeader,
-		sectionTitle   = "Uncategorized gene sets",
-		sectionType = "subsubsection"		
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
 	)
 
-	// final report
-	//---	
-	gseaReportFinal = LatexCombiner
+
+	// ----
+	
+	reportFinal = LatexCombiner
 	(
-		array = gseaReportAll,
-		sectionTitle = sectionTitle,
-		sectionType = sectionType
+		array = reports,
+		sectionTitle = "GSEA MSigDB 5.0",
+		sectionType = "section"
 	)
 	
-	return gseaReportFinal
+	return reportFinal
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------
 
 function latexTable
 (
@@ -379,19 +751,31 @@ function latexTable
 	if (minNES > 0) {
 		captionNES = "In addition, because there were too many significant hits, a minimum absolute NES of " + minNES + " was required. "
 	}
+
+	// allows Latex to break lines at underscores in column containing gene set names
+	content = REvaluate
+	(
+		table1 = tabledata,
+		script = StringInput(content=
+			'''
+			table.out <- table1
+			table.out$NAME <- gsub('_', ' ', table.out$NAME, fixed=T)			
+			''')
+	)
+
 	latex = CSV2Latex
 	(
-		tabledata    = tabledata,
+		tabledata    = content.table,
 		attach       = false,
 		caption      = caption + " FDR q-value threshold is " + minFDR + ". " + captionNES + "Gene sets with less than 10 or more than 500 genes were excluded from analysis. " +
 		               "Table sorted by normalized enrichment score (NES) from most to least enriched. The last column shows genes contributing to the enrichment together with their rank in the expression-sorted input gene list.",
-		columns      = "NAME,NES,FDR q-val,CORE_GENES",
-		colFormat    = "p{5cm}rrp{9cm}",
+		columns      = "NAME,SIZE,NES,FDR q-val,CORE_GENES",
+		colFormat    = "p{4.5cm}crrp{9cm}",
 		countRows    = true,
 		dropMissing  = false,
 		listCols     = "",
-		rename       = "NAME=Gene set,CORE_GENES=Core enrichment genes (rank)",
-		numberFormat = "FDR q-val=#0.0E00",
+		rename       = "NAME=Gene set,SIZE=Size,CORE_GENES=Core enrichment genes (rank)",
+		numberFormat = "NES=#0.00,FDR q-val=#0.0E00",
 		pageBreak    = false,
 		section      = sectionTitle,
 		sectionType  = sectionType,

@@ -565,8 +565,7 @@ gseaMSigDBUp = record()
 gseaMSigDBDn = record()
 gseaGeneSigDBUp = record()
 gseaGeneSigDBDn = record()
-gseaReportsMSigDB = record() 
-gseaReportsGeneSigDB = record() 
+
 for ID, group : groups 
 {	
 	rnk = DEG2Rnk
@@ -612,227 +611,19 @@ for ID, group : groups
 		gmt   = "/mnt/projects/generic/data/GeneSigDB/ALL_SIGSv4.nodup.gmt",
 		options = "-nperm 100 -set_max 1000 -set_min 5",
 		@name = "gseaGeneSigDB_" + ID,
-		@enabled = true
+		@enabled = false
 	)
 	gseaGeneSigDBUp[ID] = gseaGeneSigDB.enrichedUp
 	gseaGeneSigDBDn[ID] = gseaGeneSigDB.enrichedDown
 	
-	includeGseaReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
-	
-	gseaReportsMSigDB[ID] = getGSEAReport
-	(
-		enrichedUp = gseaMSigDB.enrichedUp,
-		enrichedDown = gseaMSigDB.enrichedDown,
-		ID  = ID,
-		group = group,
-		sectionTitle = ID,
-		sectionType = "subsection",
-		@name = "gseaReportMSigDB_" + ID,
-		@enabled = includeGseaReport
-	)
-
-	gseaReportsGeneSigDB[ID] = getGSEAReport
-	(
-		enrichedUp = gseaGeneSigDB.enrichedUp,
-		enrichedDown = gseaGeneSigDB.enrichedDown,
-		ID  = ID,
-		group = group,
-		sectionTitle = ID,
-		sectionType = "subsection",
-		@name = "gseaReportGeneSigDB_" + ID,
-		@enabled = false
-	)
 }
 
-gseaHeatmapMSigDBPathway = GSEAHeatmap
+gseaReportMSigDB = getGSEAReportMSigDB
 (
-	title = "MSigDB 5.0 Pathways",
-	caption = "MSigDB 5.0 canonical pathways.",
 	enrichedUp = gseaMSigDBUp,
-	enrichedDown = gseaMSigDBDn,
-	sectionTitle = "",
-	sectionType = "",
-	regexCategoryNames = "MSIGDB_C2_PATHWAYS",
-	sigCutoff = 0.001,
-	hsigCutoff = 1e-6,
-	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.001 | FDR.q.val.DSvsNonDS <= 0.001 | FDR.q.val.ERvsNonER <= 0.001| FDR.q.val.iAMPvsDS <= 0.001 | FDR.q.val.iAMPvsER <= 0.001 | FDR.q.val.ERvsDS <= 0.001",
-	cexRow = 0.7,
-	pdfWidth = 10,
-	pdfHeight = 15,
-	figureHeight = 24
+	enrichedDn = gseaMSigDBDn,
+	groups=groups 
 )
-
-gseaHeatmapMSigDBGO = GSEAHeatmap
-(
-	title = "MSigDB 5.0 GO Terms",
-	caption = "MSigDB 5.0 gene ontology gene sets.",
-	enrichedUp = gseaMSigDBUp,
-	enrichedDown = gseaMSigDBDn,
-	sectionTitle = "",
-	sectionType = "",
-	regexCategoryNames = "MSIGDB_C5_GO",
-	sigCutoff = 0.001,
-	hsigCutoff = 1e-6,
-	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.001 | FDR.q.val.DSvsNonDS <= 0.001 | FDR.q.val.ERvsNonER <= 0.001| FDR.q.val.iAMPvsDS <= 0.001 | FDR.q.val.iAMPvsER <= 0.001 | FDR.q.val.ERvsDS <= 0.001",
-	cexRow = 0.8
-)
-
-gseaHeatmapMSigDBPositional = GSEAHeatmap
-(
-	title = "MSigDB 5.0 positional gene sets",
-	caption = "MSigDB 5.0 positional gene sets.",
-	enrichedUp = gseaMSigDBUp,
-	enrichedDown = gseaMSigDBDn,
-	sectionTitle = "",
-	sectionType = "",
-	regexCategoryNames = "MSIGDB_C1_POSITIONAL",
-	sigCutoff = 0.001,
-	hsigCutoff = 1e-8,
-	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.001 | FDR.q.val.DSvsNonDS <= 0.001 | FDR.q.val.ERvsNonER <= 0.001| FDR.q.val.iAMPvsDS <= 0.001 | FDR.q.val.iAMPvsER <= 0.001 | FDR.q.val.ERvsDS <= 0.001",
-	cexRow = 0.9,
-	pdfWidth = 10,
-	pdfHeight = 15,
-	figureHeight = 24
-)
-
-gseaHeatmapMSigDBMir = GSEAHeatmap
-(
-	title = "MSigDB 5.0 miRNA target gene sets",
-	caption = "MSigDB 5.0 miRNA target gene sets.",
-	enrichedUp = gseaMSigDBUp,
-	enrichedDown = gseaMSigDBDn,
-	sectionTitle = "",
-	sectionType = "",
-	regexCategoryNames = "MSIGDB_C3_MOTIF_MIR",
-	sigCutoff = 0.1,
-	hsigCutoff = 0.01,
-	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.1 | FDR.q.val.DSvsNonDS <= 0.1 | FDR.q.val.ERvsNonER <= 0.1| FDR.q.val.iAMPvsDS <= 0.1 | FDR.q.val.iAMPvsER <= 0.1 | FDR.q.val.ERvsDS <= 0.1",
-	cexRow = 0.9,
-	pdfWidth = 10,
-	pdfHeight = 15,
-	figureHeight = 24
-)
-
-gseaHeatmapCustom = GSEAHeatmap
-(
-	title = "Custom gene sets",
-	caption = "Custom gene sets.",
-	enrichedUp = gseaMSigDBUp,
-	enrichedDown = gseaMSigDBDn,
-	sectionTitle = "",
-	sectionType = "",
-	regexGeneSetNames = "(PREDICTED|VALIDATED|HENNING)",
-	sigCutoff = 0.3,
-	hsigCutoff = 0.05,
-	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.3 | FDR.q.val.DSvsNonDS <= 0.3 | FDR.q.val.ERvsNonER <= 0.3 | FDR.q.val.iAMPvsDS <= 0.3 | FDR.q.val.iAMPvsER <= 0.3 | FDR.q.val.ERvsDS <= 0.3",
-	cexRow = 0.9,
-	pdfWidth = 10,
-	pdfHeight = 8,
-	figureHeight = 18
-)
-
-gseaHeatmapMSigDBSignaling = GSEAHeatmap
-(
-	title = "MSigDB 5.0 Signaling",
-	caption = "MSigDB 5.0 signaling gene sets.",
-	enrichedUp = gseaMSigDBUp,
-	enrichedDown = gseaMSigDBDn,
-	sectionTitle = "",
-	sectionType = "",
-	regexGeneSetNames = "SIGNALING",
-	sigCutoff = 0.01,
-	hsigCutoff = 1e-6,
-	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.01 | FDR.q.val.DSvsNonDS <= 0.01 | FDR.q.val.ERvsNonER <= 0.01| FDR.q.val.iAMPvsDS <= 0.01 | FDR.q.val.iAMPvsER <= 0.01 | FDR.q.val.ERvsDS <= 0.01"
-)
-
-gseaHeatmapTFtarget = GSEAHeatmap
-(
-	title = "MSigDB 5.0 TF targets",
-	caption = "MSigDB 5.0 transcription factor target gene sets.",
-	enrichedUp = gseaMSigDBUp,
-	enrichedDown = gseaMSigDBDn,
-	sectionTitle = "",
-	sectionType = "",
-	regexCategoryNames = "MSIGDB_C3_MOTIF_TFT",
-	sigCutoff = 0.01,
-	hsigCutoff = 0.001,
-	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.01 | FDR.q.val.DSvsNonDS <= 0.01 | FDR.q.val.ERvsNonER <= 0.01 | FDR.q.val.iAMPvsDS <= 0.01 | FDR.q.val.iAMPvsER <= 0.01 | FDR.q.val.ERvsDS <= 0.01",
-	cexRow = 0.8
-)
-
-gseaHeatmapMSigDBChemPert = GSEAHeatmap
-(
-	title = "MSigDB 5.0 Chemical Perturbation",
-	caption = "MSigDB 5.0 chemical perturbation gene sets.",
-	enrichedUp = gseaMSigDBUp,
-	enrichedDown = gseaMSigDBDn,
-	sectionTitle = "",
-	sectionType = "",
-	regexCategoryNames = "MSIGDB_C2_CGP",
-	regexGeneSetNames = "(_UP|_DN)$",
-	sigCutoff = 0.001,
-	hsigCutoff = 1e-6,
-	NESCutoff = 2.5,
-	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.001 | FDR.q.val.DSvsNonDS <= 0.001 | FDR.q.val.ERvsNonER <= 0.001| FDR.q.val.iAMPvsDS <= 0.001 | FDR.q.val.iAMPvsER <= 0.001 | FDR.q.val.ERvsDS <= 0.001",
-	cexRow = 0.7
-)
-
-gseaHeatmapMSigDBOther = GSEAHeatmap
-(
-	title = "MSigDB 5.0 Other",
-	caption = "Other enriched MSigDB 5.0 gene sets.",
-	enrichedUp = gseaMSigDBUp,
-	enrichedDown = gseaMSigDBDn,
-	sectionTitle = "",
-	sectionType = "",
-	regexCategoryNamesExclude = "(MSIGDB_C1_POSITIONAL|MSIGDB_C2_PATHWAYS|MSIGDB_C3_MOTIF|MSIGDB_C4_COMPUTATIONAL|MSIGDB_C5_GO)",
-	regexGeneSetNamesExclude = "(_UP|_DN)$",
-	sigCutoff = 0.001,
-	hsigCutoff = 1e-6,
-	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.001 | FDR.q.val.DSvsNonDS <= 0.001 | FDR.q.val.ERvsNonER <= 0.001| FDR.q.val.iAMPvsDS <= 0.001 | FDR.q.val.iAMPvsER <= 0.001 | FDR.q.val.ERvsDS <= 0.001",
-	cexRow = 0.7
-)
-
-gseaHeatmapsMSigDB = LatexCombiner
-(
-	array = {gseaHeatmapMSigDBPathway, gseaHeatmapMSigDBGO, gseaHeatmapMSigDBPositional, gseaHeatmapMSigDBMir, gseaHeatmapCustom, gseaHeatmapMSigDBSignaling, gseaHeatmapTFtarget, gseaHeatmapMSigDBChemPert, gseaHeatmapMSigDBOther},
-	sectionTitle="Graphical overview of MSigDB enrichment results", 
-	sectionType="subsection"
-)
-
-gseaReportMSigDB = LatexCombiner
-(
-	array        = {gseaHeatmapsMSigDB, gseaReportsMSigDB},
-	pagebreak    = true,
-	tail         = '\newpage{}',
-	sectionTitle = "GSEA MSigDB 5.0"
-)
-
-gseaHeatmapGeneSigDB = GSEAHeatmap
-(
-	title = "GeneSigDB 4.0 Gene Sets",
-	caption = "GeneSigDB 4.0 enriched gene sets.",
-	enrichedUp = gseaGeneSigDBUp,
-	enrichedDown = gseaGeneSigDBDn,
-	sectionTitle = "Graphical overview of GeneSigDB enrichment results",
-	sectionType = "subsection",
-	sigCutoff = 0.0001,
-	hsigCutoff = 1e-6,
-	RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= 0.0001 | FDR.q.val.DSvsNonDS <= 0.0001 | FDR.q.val.ERvsNonER <= 0.0001| FDR.q.val.iAMPvsDS <= 0.0001 | FDR.q.val.iAMPvsER <= 0.0001 | FDR.q.val.ERvsDS <= 0.0001",
-	cexRow = 0.7,
-	pdfWidth = 10,
-	pdfHeight = 15,
-	figureHeight = 24
-)
-
-gseaReportGeneSigDB = LatexCombiner
-(
-	array        = {gseaHeatmapGeneSigDB, gseaReportsGeneSigDB},
-	pagebreak    = true,
-	tail         = '\newpage{}',
-	sectionTitle = "GSEA GeneSigDB 4.0"
-)
-
 
 //------------------------------------------------------------------------------------------------
 //--- DEG REPORTS OF miRNA TARGETS GENES
@@ -951,7 +742,7 @@ boxplotEpigeneticModifiers = ExpressionBoxPlot
 	groups = sampleGroupsSimple,
 	groupOrder = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot,
-	hgnc = "HDAC1,HDAC2,HDAC3,HDAC4,HDAC5,HDAC6,HDAC7,HDAC8,HDAC9,HDAC10,HDAC11,EP300,EZH1,EZH2,SUZ12,EED,EHMT1,EHMT2,KMT2A,KMT2D,KMT2C,DNMT1,DNMT3A,DNMT3B,TET1,TET2,CREBBP",
+	hgnc = "HDAC1,HDAC2,HDAC3,HDAC4,HDAC5,HDAC6,HDAC7,HDAC8,HDAC9,HDAC10,HDAC11,EP300,EZH1,EZH2,SUZ12,EED,EHMT1,EHMT2,KMT2A,KMT2D,KMT2C,DNMT1,DNMT3A,DNMT3B,TET1,TET2,CREBBP,SUV39H1",
 	nRow = 4,
 	nCol = 7,
 	height=9,
@@ -1054,7 +845,6 @@ combinedReport = LatexCombiner
 		pgeReport,
 		degReportMir,
 		gseaReportMSigDB,
-		gseaReportGeneSigDB,
 		rConfig.report
 	}
 )
