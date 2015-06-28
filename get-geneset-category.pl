@@ -1,101 +1,101 @@
 use strict;
 use warnings;
 
-my $outfile = "/mnt/projects/iamp/results/geneset_category.tsv";
+my $outfile = "/mnt/projects/iamp/results/geneset_annotation.tsv";
 open(OUT, ">$outfile") or die "ERROR: Could not write to output file $outfile.\n";
 
-print OUT "geneset\tcategory\n";
+print OUT "geneset\tcategory\tdescription\tlinkid\n";
 
 # MSigDB 5.0
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/h.all.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_H_HALLMARK\n";
+	print OUT uc($gs),"\tMSIGDB_H_HALLMARK\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c1.all.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C1_POSITIONAL\n";
+	print OUT uc($gs),"\tMSIGDB_C1_POSITIONAL\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c2.cgp.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C2_CGP\n";
+	print OUT uc($gs),"\tMSIGDB_C2_CGP\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c2.cp.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C2_PATHWAYS\n";
+	print OUT uc($gs),"\tMSIGDB_C2_PATHWAYS\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c3.mir.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C3_MOTIF_MIR\n";
+	print OUT uc($gs),"\tMSIGDB_C3_MOTIF_MIR\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c3.tft.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C3_MOTIF_TFT\n";
+	print OUT uc($gs),"\tMSIGDB_C3_MOTIF_TFT\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c4.cgn.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C4_COMPUTATIONAL_CGN\n";
+	print OUT uc($gs),"\tMSIGDB_C4_COMPUTATIONAL_CGN\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c4.cm.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C4_COMPUTATIONAL_CM\n";
+	print OUT uc($gs),"\tMSIGDB_C4_COMPUTATIONAL_CM\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c5.bp.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C5_GO_BP\n";
+	print OUT uc($gs),"\tMSIGDB_C5_GO_BP\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c5.cc.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C5_GO_CC\n";
+	print OUT uc($gs),"\tMSIGDB_C5_GO_CC\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c5.mf.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C5_GO_MF\n";
+	print OUT uc($gs),"\tMSIGDB_C5_GO_MF\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c6.all.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C6_ONCOGENIC_SIGNATURES\n";
+	print OUT uc($gs),"\tMSIGDB_C6_ONCOGENIC_SIGNATURES\t\t$gs\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c7.all.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C7_IMMUNOLOGIC_SIGNATURES\n";
+	print OUT uc($gs),"\tMSIGDB_C7_IMMUNOLOGIC_SIGNATURES\t\t$gs\n";
 }
 close(IN);
 
@@ -143,43 +143,65 @@ while (<IN>) {
 	$gs_short =~ s/_CTD_\d+//;
 	
 	if ($gs =~ /(.*)_MRC$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_MRC\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_MRC\t\t$gs\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_LINCS$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_LINCS\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_LINCS\t\t$gs\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_Roche$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_ROCHE\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_ROCHE\t\t$gs\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_GSK$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_GSK\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_GSK\t\t$gs\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_FDA$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_FDA\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_FDA\t\t$gs\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_RBC$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_RBC\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_RBC\t\t$gs\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_Kinome Scan$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_KINOMESCAN\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_KINOMESCAN\t\t$gs\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_BOSS$/) {
-		print OUT uc($gs),"\tDSIGDB_D4_BOSS\n";
+		print OUT uc($gs),"\tDSIGDB_D4_BOSS\t\t$gs\n";
 		next;
 	}
 	elsif ($dsigdb{$gs_short}) {
-		print OUT uc($gs),"\tDSIGDB_",$dsigdb{$gs_short}, "\n";
+		print OUT uc($gs),"\tDSIGDB_",$dsigdb{$gs_short}, "\t\t$gs\n";
 	}
 	else {
 		print STDERR "WARNING: Category for DSigDB gene set $gs unknown.\n";
 	}
+}
+close(IN);
+
+# GeneSigDB 4.0
+
+open(IN, "/mnt/projects/generic/data/GeneSigDB/ALL_SIGSv4.nodup.gmt") or die "ERROR: Could not read input.\n";
+while (<IN>) {
+	my ($gs) = split /\t/;
+	next if (!$gs);
+
+	my ($pmid, $rest) = $gs =~ /([^-_]+)[-_](.*)/;
+	my $xmlfile = "/mnt/projects/generic/data/GeneSigDB/details/$pmid/$gs-index.xml";
+	my $desc = "";
+	open(F, $xmlfile) or die "ERROR: Could not open file $xmlfile\n";
+	while (<F>) {
+		if (/<sigDescription>(.*)<\/sigDescription>/) {
+			$desc = $1;
+			last;
+		}
+	}
+	close(F);
+	print OUT uc($gs),"\tGeneSigDB\t$desc\t$gs\n";
 }
 close(IN);
 

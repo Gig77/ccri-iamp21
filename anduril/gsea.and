@@ -6,6 +6,7 @@ function getGSEAReportMSigDB
 ) -> (Latex report)
 {
 	reports = record()
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\nhttp://www.broadinstitute.org/gsea/msigdb/cards/$ID$.html\tLINKID\tNAME")
 
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------
 	// PATHWAYS
@@ -43,7 +44,8 @@ function getGSEAReportMSigDB
 		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
 		tableReportUp = latexTable 
 		(
-			tabledata = filteredUp.table, 
+			tabledata = filteredUp.table,
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Up",
@@ -54,6 +56,7 @@ function getGSEAReportMSigDB
 		tableReportDn = latexTable 
 		(
 			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Dn",
@@ -124,6 +127,7 @@ function getGSEAReportMSigDB
 		tableReportUp = latexTable 
 		(
 			tabledata = filteredUp.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Up",
@@ -134,6 +138,7 @@ function getGSEAReportMSigDB
 		tableReportDn = latexTable 
 		(
 			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Dn",
@@ -204,6 +209,7 @@ function getGSEAReportMSigDB
 		tableReportUp = latexTable 
 		(
 			tabledata = filteredUp.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Up",
@@ -214,6 +220,7 @@ function getGSEAReportMSigDB
 		tableReportDn = latexTable 
 		(
 			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Dn",
@@ -284,6 +291,7 @@ function getGSEAReportMSigDB
 		tableReportUp = latexTable 
 		(
 			tabledata = filteredUp.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Up",
@@ -294,6 +302,7 @@ function getGSEAReportMSigDB
 		tableReportDn = latexTable 
 		(
 			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Dn",
@@ -364,6 +373,7 @@ function getGSEAReportMSigDB
 		tableReportUp = latexTable 
 		(
 			tabledata = filteredUp.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Up",
@@ -374,6 +384,7 @@ function getGSEAReportMSigDB
 		tableReportDn = latexTable 
 		(
 			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Dn",
@@ -441,6 +452,7 @@ function getGSEAReportMSigDB
 		tableReportUp = latexTable 
 		(
 			tabledata = filteredUp.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Up",
@@ -451,6 +463,7 @@ function getGSEAReportMSigDB
 		tableReportDn = latexTable 
 		(
 			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Dn",
@@ -519,6 +532,7 @@ function getGSEAReportMSigDB
 		tableReportUp = latexTable 
 		(
 			tabledata = filteredUp.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Up",
@@ -529,6 +543,7 @@ function getGSEAReportMSigDB
 		tableReportDn = latexTable 
 		(
 			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Dn",
@@ -600,6 +615,7 @@ function getGSEAReportMSigDB
 		tableReportUp = latexTable 
 		(
 			tabledata = filteredUp.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Up",
@@ -610,6 +626,7 @@ function getGSEAReportMSigDB
 		tableReportDn = latexTable 
 		(
 			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Dn",
@@ -679,6 +696,7 @@ function getGSEAReportMSigDB
 		tableReportUp = latexTable 
 		(
 			tabledata = filteredUp.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Up",
@@ -689,6 +707,7 @@ function getGSEAReportMSigDB
 		tableReportDn = latexTable 
 		(
 			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
 			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
 			minFDR    = fdr,
 			@name     = "table"+category+ID+"Dn",
@@ -737,12 +756,512 @@ function getGSEAReportMSigDB
 
 // ---------------------------------------------------------------------------------------------------------------------------
 
+function getGSEAReportGeneSigDB
+(
+	record enrichedUp,
+	record enrichedDn,
+	record groups,
+	record tableReportGroups
+) -> (Latex report)
+{
+	reports = record()
+
+	category = "GeneSigDB"
+	title = "GeneSigDB 4.0 gene sets"
+	description = "Gene sets from GeneSigDB 4.0 (http://compbio.dfci.harvard.edu/genesigdb/). These gene sets represent fully traceable, standardized, annotated gene signatures " +
+	              "that have been manually curated from publications indexed in PubMed."
+	fdr = 0.0001
+	filter = StringInput(content='''table.out <- table1[table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\nhttp://compbio.dfci.harvard.edu/genesigdb/signaturedetail.jsp?signatureId=$ID$\tLINKID\tNAME")
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-6,
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.7,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table, 
+			hyperlinkRule = hyperlinkRule,
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			includeDescription = true,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule,
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			includeDescription = true,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = "",
+		sectionType = "",
+		@name = "report"+category
+	)
+
+	// ----
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "GSEA GeneSigDB 4.0",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+function getGSEAReportDSigDB
+(
+	record enrichedUp,
+	record enrichedDn,
+	record groups
+) -> (Latex report)
+{
+	reports = record()
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\nhttp://www.broadinstitute.org/gsea/msigdb/cards/$ID$.html\tLINKID\tNAME")
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// D1: FDA APPROVED DRUGS
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "FDA"
+	title = "FDA Approved Drug Gene Sets"
+	description = "DSigDB 1.0 FDA Approved Drug Gene Sets (http://tanlab.ucdenver.edu/DSigDB/DSigDBv1.0/browser.py?db=d1)"
+	fdr = 0.1
+	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="DSIGDB_D1_FDA" & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-3,
+		regexCategoryNames = "DSIGDB_D1_FDA",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.7,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table,
+			hyperlinkRule = hyperlinkRule, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// D2: Kinase Inhibitors
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Kinase"
+	title = "Kinase Inhibitor Gene Sets"
+	description = "DSigDB 1.0 kinase inhibitors gene sets based on in vitro kinase profiling assays (http://tanlab.ucdenver.edu/DSigDB/DSigDBv1.0/browser.py?db=d2)"
+	fdr = 0.1
+	filter = StringInput(content='''table.out <- table1[grepl("DSIGDB_D2_KINASE", table1$CATEGORY) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 0.01,
+		regexCategoryNames = "DSIGDB_D2_KINASE",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.8,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table,
+			hyperlinkRule = hyperlinkRule, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// D3: PERTURBATION SIGNATURES (CMAP)
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Perturb"
+	title = "Perturbation Signatures"
+	description = "7,064 gene expression profiles from three cancer cell lines perturbed by 1,309 compounds from CMap (build 02). (http://tanlab.ucdenver.edu/DSigDB/DSigDBv1.0/browser.py?db=d3)"
+	fdr = 0.001
+	filter = StringInput(content='''table.out <- table1[grepl("DSIGDB_D3_CMAP_PERTURBATION", table1$CATEGORY) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-6,
+		regexCategoryNames = "DSIGDB_D3_CMAP_PERTURBATION",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.9,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table,
+			hyperlinkRule = hyperlinkRule, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	// D4: COMPUTATIONAL SIGNATURES
+	//-----------------------------------------------------------------------------------------------------------------------------------------------------
+	category = "Comput"
+	title = "Computational Signatures"
+	description = "Drug signatures extracted from literature using a mixture of manual curation and automatic computational approaches. " + 
+				  "Includes text mining of drug-gene targets using Biomedical Object Search System (BOSS), " +
+				  "curation of targets from Comparative Toxicogenomics Database (CTD), " +
+				  "and manual curation of targets from the Therapeutics Targets Database (TTD). " +
+				  "Source: http://tanlab.ucdenver.edu/DSigDB/DSigDBv1.0/browser.py?db=d4"
+	fdr = 0.01
+	filter = StringInput(content='''table.out <- table1[grepl("DSIGDB_D4", table1$CATEGORY) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsubsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-6,
+		regexCategoryNames = "DSIGDB_D4",
+		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.7,
+		@name = "heatmap"+category
+	)
+	
+	tableReports = record()
+	for ID, group : groups 
+	{			
+		includeTableReport = (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER")
+
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filter, @name = "filtered"+category+ID+"Up", @enabled = includeTableReport)
+		tableReportUp = latexTable 
+		(
+			tabledata = filteredUp.table,
+			hyperlinkRule = hyperlinkRule, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Up",
+			@enabled  = includeTableReport
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filter, @name = "filtered"+category+ID+"Dn", @enabled = includeTableReport)
+		tableReportDn = latexTable 
+		(
+			tabledata = filteredDn.table, 
+			hyperlinkRule = hyperlinkRule, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+category+ID+"Dn",
+			@enabled  = includeTableReport
+		)
+
+		tableReports[ID] = LatexCombiner 
+		(
+			latex1 = tableReportUp, 
+			latex2 = tableReportDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "tableReport"+category+ID,
+			@enabled  = includeTableReport
+		)
+	}
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReports,
+		sectionTitle = title,
+		sectionType = "subsection",
+		@name = "report"+category
+	)
+
+	// ----
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "GSEA DSigB 1.0",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+function tableReports
+(
+	CSV	enrichedUp,
+	CSV enrichedDn,
+	string title,
+	string filterScript,
+	record reportGroups,
+	string hyperlinkRule,
+	float  fdr,
+	string sectionType
+) -> (Array<Latex> reports)
+{
+	reports = record()
+	
+	for ID, group : reportGroups 
+	{			
+		filteredUp = REvaluate(table1 = enrichedUp, script = filter, @name = "filtered"+ID+"Up")
+		tableUp = latexTable 
+		(
+			tabledata = filteredUp,
+			hyperlinkRule = hyperlinkRule, 
+			caption   = title + " enriched for genes up-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+ID+"Up"
+		) 		
+
+		filteredDn = REvaluate(table1 = enrichedDn, script = filter, @name = "filtered"+ID+"Dn")
+		tableDn = latexTable 
+		(
+			tabledata = filteredDn, 
+			hyperlinkRule = hyperlinkRule, 
+			caption   = title + " enriched for genes down-regulated in " + group.caseG + " compared to " + group.controlG + " samples.",
+			minFDR    = fdr,
+			@name     = "table"+ID+"Dn"
+		)
+
+		reports[ID] = LatexCombiner 
+		(
+			latex1 = tableUp, 
+			latex2 = tableDn,
+			sectionTitle = ID,
+			sectionType = "subsubsection",
+			@name       = "report"+ID
+		)
+	}
+	
+	return reports
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
 function latexTable
 (
 	CSV    tabledata,
+	CSV hyperlinkRule,
 	string caption,
 	float  minFDR,
 	float  minNES = 0,
+	boolean includeDescription = false,
 	string sectionTitle = "",
 	string sectionType = ""
 ) -> (Latex report)
@@ -760,8 +1279,21 @@ function latexTable
 			'''
 			table.out <- table1
 			table.out$NAME <- gsub('_', ' ', table.out$NAME, fixed=T)			
+			table.out$DESCRIPTION <- gsub('_', ' ', table.out$DESCRIPTION, fixed=T)			
+			table.out$LINKID <- gsub('$', '\\$', table.out$LINKID, fixed=T)			
 			''')
 	)
+	
+	if (includeDescription) {
+		columns = "NAME,DESCRIPTION,SIZE,NES,FDR q-val,CORE_GENES"
+		colFormat = "p{1.5cm}p{4cm}crrp{8cm}"	
+		rename = "NAME=Gene set,DESCRIPTION=Description,SIZE=Size,CORE_GENES=Core enrichment genes (rank)"
+	}
+	else {
+		columns = "NAME,SIZE,NES,FDR q-val,CORE_GENES"
+		colFormat = "p{4.5cm}crrp{9cm}"
+		rename = "NAME=Gene set,SIZE=Size,CORE_GENES=Core enrichment genes (rank)"
+	}
 
 	latex = CSV2Latex
 	(
@@ -769,17 +1301,18 @@ function latexTable
 		attach       = false,
 		caption      = caption + " FDR q-value threshold is " + minFDR + ". " + captionNES + "Gene sets with less than 10 or more than 500 genes were excluded from analysis. " +
 		               "Table sorted by normalized enrichment score (NES) from most to least enriched. The last column shows genes contributing to the enrichment together with their rank in the expression-sorted input gene list.",
-		columns      = "NAME,SIZE,NES,FDR q-val,CORE_GENES",
-		colFormat    = "p{4.5cm}crrp{9cm}",
+		columns      = columns,
+		colFormat    = colFormat,
 		countRows    = true,
 		dropMissing  = false,
 		listCols     = "",
-		rename       = "NAME=Gene set,SIZE=Size,CORE_GENES=Core enrichment genes (rank)",
+		rename       = rename,
 		numberFormat = "NES=#0.00,FDR q-val=#0.0E00",
 		pageBreak    = false,
 		section      = sectionTitle,
 		sectionType  = sectionType,
-		skipEmpty    = true
+		skipEmpty    = true,
+		refs         = hyperlinkRule
 	)
 	
 	return latex.report

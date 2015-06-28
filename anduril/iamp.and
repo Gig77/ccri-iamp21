@@ -22,7 +22,7 @@ ensemblDb = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/etc/ensemblH
 // mysql --host=ensembldb.ensembl.org --port=5306 --database=homo_sapiens_core_73_37 --user=anonymous -B -A -e "select stable_id as ensembl,description from gene where description is not null;" > /mnt/biowaste/data2/christian.frech/iamp/results/current/anduril/ensembl.homo_sapiens_73_37.geneAnnotations.tsv
 geneAnnot = INPUT(path=PROJECT_BASE+"/data/anduril/ensembl.homo_sapiens_75_37.geneAnnotations.tsv") // downloaded via Ensembl biomart http://feb2014.archive.ensembl.org/biomart/martview/b57730c5d3013cd648bcd2c966113d42
 latexHeader = INPUT(path=PROJECT_BASE+"/scripts/anduril/latexHeader")
-genesetCategories = INPUT(path=PROJECT_BASE+"/results/geneset_category.tsv")
+genesetAnnotation = INPUT(path=PROJECT_BASE+"/results/geneset_annotation.tsv")
 
 fcLimitInclude  = 1.00
 pLimitInclude   = 1e-5
@@ -92,7 +92,6 @@ sampleGroups = TableQuery(table1 = sampleAnnotation @require,
 	ORDER BY "ID"
                                    """)
 sampleGroupsSimple = CSVFilter(csv=sampleGroups, regexp="ID=iAMP|DS|ER|CD19")
-
 
 //------------------------------------------------------------------------------------------------
 //--- SETUP COMPARISON GROUPS
@@ -563,8 +562,14 @@ include "gsea.and"
 
 gseaMSigDBUp = record()
 gseaMSigDBDn = record()
+gseaDSigDBUp = record()
+gseaDSigDBDn = record()
 gseaGeneSigDBUp = record()
 gseaGeneSigDBDn = record()
+
+permutations = 100
+
+groupsGSEAReport = record()
 
 for ID, group : groups 
 {	
@@ -577,52 +582,79 @@ for ID, group : groups
 		@name = "rnk_" + ID
 	)
 
-	// run GSEA
-	//---
+	// MSigDB
+	
 	gseaMSigDB = GSEA
 	(
 		rnk = rnk,
-		categories = genesetCategories,
+		annotations = genesetAnnotation,
 		label = ID,
 		gmt   = "/mnt/projects/generic/data/msigdb5.0/msigdb.v5.0.symbols.gmt,/mnt/projects/iamp/results/gsea/custom/mir_target_genesets.gmx",
-		options = "-nperm 100 -set_max 500 -set_min 10",
+		options = "-nperm " + permutations + " -set_max 500 -set_min 10",
 		@name = "gseaMSigDB_" + ID,
 		@enabled = true
 	)
 	gseaMSigDBUp[ID] = gseaMSigDB.enrichedUp
 	gseaMSigDBDn[ID] = gseaMSigDB.enrichedDown
 
-	gseaDSigDB = GSEA
-	(
-		rnk = rnk,
-		categories = genesetCategories,
-		label = ID,
-		gmt   = "/mnt/projects/generic/data/DSigDB/DSigDB_v1.0_All.nodup.gmt",
-		options = "-nperm 100 -set_max 1000 -set_min 5",
-		@name = "gseaDSigDB_" + ID,
-		@enabled = false
-	)
+	// GeneSigDB
 
 	gseaGeneSigDB = GSEA
 	(
 		rnk = rnk,
-		categories = genesetCategories,
+		annotations = genesetAnnotation,
 		label = ID,
 		gmt   = "/mnt/projects/generic/data/GeneSigDB/ALL_SIGSv4.nodup.gmt",
-		options = "-nperm 100 -set_max 1000 -set_min 5",
+		options = "-nperm " + permutations + " -set_max 1000 -set_min 5",
 		@name = "gseaGeneSigDB_" + ID,
-		@enabled = false
+		@enabled = true
 	)
 	gseaGeneSigDBUp[ID] = gseaGeneSigDB.enrichedUp
 	gseaGeneSigDBDn[ID] = gseaGeneSigDB.enrichedDown
 	
+	// DSigDB
+
+	gseaDSigDB = GSEA
+	(
+		rnk = rnk,
+		annotations = genesetAnnotation,
+		label = ID,
+		gmt   = "/mnt/projects/generic/data/DSigDB/DSigDB_v1.0_All.nodup.gmt",
+		options = "-nperm " + permutations + " -set_max 1000 -set_min 3",
+		@name = "gseaDSigDB_" + ID,
+		@enabled = true
+	)
+	gseaDSigDBUp[ID] = gseaDSigDB.enrichedUp
+	gseaDSigDBDn[ID] = gseaDSigDB.enrichedDown
+	
+	if (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER") 
+	{
+		groupsGSEAReport[ID] = group
+	}
 }
 
 gseaReportMSigDB = getGSEAReportMSigDB
 (
 	enrichedUp = gseaMSigDBUp,
 	enrichedDn = gseaMSigDBDn,
-	groups=groups 
+	groups=groups,
+	@enabled = true 
+)
+
+gseaReportGeneSigDB = getGSEAReportGeneSigDB
+(
+	enrichedUp = gseaGeneSigDBUp,
+	enrichedDn = gseaGeneSigDBDn,
+	groups=groups,
+	tableReportGroups=groupsGSEAReport
+)
+
+gseaReportDSigDB = getGSEAReportDSigDB
+(
+	enrichedUp = gseaDSigDBUp,
+	enrichedDn = gseaDSigDBDn,
+	groups=groups,
+	@enabled = true 
 )
 
 //------------------------------------------------------------------------------------------------
@@ -845,6 +877,8 @@ combinedReport = LatexCombiner
 		pgeReport,
 		degReportMir,
 		gseaReportMSigDB,
+		gseaReportGeneSigDB,
+		gseaReportDSigDB,
 		rConfig.report
 	}
 )
