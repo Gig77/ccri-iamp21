@@ -4,98 +4,98 @@ use warnings;
 my $outfile = "/mnt/projects/iamp/results/geneset_annotation.tsv";
 open(OUT, ">$outfile") or die "ERROR: Could not write to output file $outfile.\n";
 
-print OUT "geneset\tcategory\tdescription\tlinkid\n";
+print OUT "geneset\tcategory\tdescription\tlinkout\n";
 
 # MSigDB 5.0
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/h.all.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_H_HALLMARK\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_H_HALLMARK\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c1.all.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C1_POSITIONAL\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C1_POSITIONAL\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c2.cgp.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C2_CGP\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C2_CGP\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c2.cp.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C2_PATHWAYS\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C2_PATHWAYS\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c3.mir.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C3_MOTIF_MIR\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C3_MOTIF_MIR\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c3.tft.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C3_MOTIF_TFT\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C3_MOTIF_TFT\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c4.cgn.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C4_COMPUTATIONAL_CGN\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C4_COMPUTATIONAL_CGN\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c4.cm.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C4_COMPUTATIONAL_CM\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C4_COMPUTATIONAL_CM\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c5.bp.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C5_GO_BP\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C5_GO_BP\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c5.cc.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C5_GO_CC\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C5_GO_CC\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c5.mf.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C5_GO_MF\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C5_GO_MF\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c6.all.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C6_ONCOGENIC_SIGNATURES\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C6_ONCOGENIC_SIGNATURES\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c7.all.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C7_IMMUNOLOGIC_SIGNATURES\t\t$gs\n";
+	print OUT uc($gs),"\tMSIGDB_C7_IMMUNOLOGIC_SIGNATURES\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
@@ -135,47 +135,47 @@ close(IN);
 
 open(IN, "/mnt/projects/generic/data/DSigDB/DSigDB_v1.0_All.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
-	my ($gs) = split /\t/;
+	my ($gs, $url) = split /\t/;
 	next if (!$gs);
 
 	my $gs_short = $gs;
 	$gs_short =~ s/_TTD_\d+//;
 	$gs_short =~ s/_CTD_\d+//;
-	
+		
 	if ($gs =~ /(.*)_MRC$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_MRC\t\t$gs\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_MRC\t\t$url\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_LINCS$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_LINCS\t\t$gs\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_LINCS\t\t$url\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_Roche$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_ROCHE\t\t$gs\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_ROCHE\t\t$url\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_GSK$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_GSK\t\t$gs\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_GSK\t\t$url\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_FDA$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_FDA\t\t$gs\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_FDA\t\t$url\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_RBC$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_RBC\t\t$gs\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_RBC\t\t$url\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_Kinome Scan$/) {
-		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_KINOMESCAN\t\t$gs\n";
+		print OUT uc($gs),"\tDSIGDB_D2_KINASE_INH_KINOMESCAN\t\t$url\n";
 		next;
 	}
 	elsif ($gs =~ /(.*)_BOSS$/) {
-		print OUT uc($gs),"\tDSIGDB_D4_BOSS\t\t$gs\n";
+		print OUT uc($gs),"\tDSIGDB_D4_BOSS\t\t$url\n";
 		next;
 	}
 	elsif ($dsigdb{$gs_short}) {
-		print OUT uc($gs),"\tDSIGDB_",$dsigdb{$gs_short}, "\t\t$gs\n";
+		print OUT uc($gs),"\tDSIGDB_",$dsigdb{$gs_short}, "\t\t$url\n";
 	}
 	else {
 		print STDERR "WARNING: Category for DSigDB gene set $gs unknown.\n";
@@ -192,6 +192,8 @@ while (<IN>) {
 
 	my ($pmid, $rest) = $gs =~ /([^-_]+)[-_](.*)/;
 	my $xmlfile = "/mnt/projects/generic/data/GeneSigDB/details/$pmid/$gs-index.xml";
+	
+	# fetch description
 	my $desc = "";
 	open(F, $xmlfile) or die "ERROR: Could not open file $xmlfile\n";
 	while (<F>) {
@@ -201,9 +203,52 @@ while (<IN>) {
 		}
 	}
 	close(F);
-	print OUT uc($gs),"\tGeneSigDB\t$desc\t$gs\n";
+	
+	# fetch paper title
+	my $title;
+	print "Fetching pubmed ID $pmid... ";
+	open(W, "curl -s \"http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=$pmid&rettype=medline\"|") or die "ERROR curl: $!\n";
+	while(<W>) {
+		chomp;
+		my ($key, $value) = /(\S+)\s*?-\s+(.*)/;
+		if (!$key and $title) {
+			my ($nline) = /^\s*(.*)/;			
+			$title .= $nline;
+		} elsif ($title) {
+			last;
+		} elsif ($key and $key eq "TI") {
+			$title = $value;
+		}
+	}
+	close(W);
+	print "$title\n";
+
+	
+	print OUT uc($gs),"\tGeneSigDB\t$title $desc\thttp://compbio.dfci.harvard.edu/genesigdb/signaturedetail.jsp?signatureId=$gs\n";
 }
 close(IN);
+
+# Jaspar
+
+open(IN, "/mnt/projects/generic/data/opossum3/jaspar_core.gmt") or die "ERROR: Could not read input.\n";
+while (<IN>) {
+	my ($gs, $url) = split /\t/;
+	next if (!$gs);
+
+	print OUT uc($gs),"\tJaspar\t\t$url\n";
+}
+close(IN);
+
+# PAZAR
+
+#open(IN, "/mnt/projects/generic/data/pazar/pazar.gmt") or die "ERROR: Could not read input.\n";
+#while (<IN>) {
+#	my ($gs, $url) = split /\t/;
+#	next if (!$gs);
+#
+#	print OUT uc($gs),"\tPAZAR\t\t$url\n";
+#}
+#close(IN);
 
 close(OUT);
 

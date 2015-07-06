@@ -3,8 +3,14 @@
 //------------------------------------------------------------------------------------------------
 
 title = "iAMP21 RNA-seq"
+shortName = "iAMP21"
 authors = "Christian Frech"
-useFunct = true
+
+runFunct = true
+runGseaMSigDB = true
+runGseaGeneSigDB = true
+runGseaDSigDB = true
+runGseaTFTargets = true
 
 PROJECT_BASE="/mnt/projects/iamp"
 inputBamDir = INPUT(path=PROJECT_BASE+"/data/bam", recursive=false)
@@ -22,6 +28,7 @@ ensemblDb = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/etc/ensemblH
 // mysql --host=ensembldb.ensembl.org --port=5306 --database=homo_sapiens_core_73_37 --user=anonymous -B -A -e "select stable_id as ensembl,description from gene where description is not null;" > /mnt/biowaste/data2/christian.frech/iamp/results/current/anduril/ensembl.homo_sapiens_73_37.geneAnnotations.tsv
 geneAnnot = INPUT(path=PROJECT_BASE+"/data/anduril/ensembl.homo_sapiens_75_37.geneAnnotations.tsv") // downloaded via Ensembl biomart http://feb2014.archive.ensembl.org/biomart/martview/b57730c5d3013cd648bcd2c966113d42
 latexHeader = INPUT(path=PROJECT_BASE+"/scripts/anduril/latexHeader")
+latexHeaderGsea = INPUT(path=PROJECT_BASE+"/scripts/anduril/latexHeaderGsea")
 genesetAnnotation = INPUT(path=PROJECT_BASE+"/results/geneset_annotation.tsv")
 
 fcLimitInclude  = 1.00
@@ -46,6 +53,13 @@ sampleGroups = TableQuery(table1 = sampleAnnotation @require,
 		"Subtype"                                          AS "Description"
 		FROM   table1
 		GROUP  BY "Subtype"
+      UNION
+	  SELECT 'tumor'                                       AS "ID",
+		GROUP_CONCAT("Name" ORDER BY "Name" SEPARATOR ',') AS "Members",
+		'median'                                           AS "Type",
+		'Leukemic B-cells (iAMP21, DS, ER)'                AS "Description"
+		FROM   table1
+		WHERE "Subtype" IN ('iAMP', 'DS', 'ER')
       UNION
 	  SELECT 'immature'                                     AS "ID",
 		GROUP_CONCAT("Name" ORDER BY "Name" SEPARATOR ',') AS "Members",
@@ -526,7 +540,7 @@ for ID, group : groups
 		statusFilter      = "NA",
 		sectionType       = "subsubsection",
 		@name             = "network_"+ID,
-		@enabled          = useFunct
+		@enabled          = runFunct
 	)
  
 	//--- COMBINE REPORTS -----------------------------------------------------------------------------//
@@ -553,108 +567,6 @@ degReport = LatexCombiner
 	pagebreak    = true,
 	tail         = '\newpage{}',
 	sectionTitle = "Differentially expressed genes"
-)
-
-//------------------------------------------------------------------------------------------------
-//--- GENE SET ENRICHMENT ANALYSIS (GSEA)
-//------------------------------------------------------------------------------------------------
-include "gsea.and"
-
-gseaMSigDBUp = record()
-gseaMSigDBDn = record()
-gseaDSigDBUp = record()
-gseaDSigDBDn = record()
-gseaGeneSigDBUp = record()
-gseaGeneSigDBDn = record()
-
-permutations = 100
-
-groupsGSEAReport = record()
-
-for ID, group : groups 
-{	
-	rnk = DEG2Rnk
-	(
-		deg = degAllLst[ID],
-		annotation = geneNames,
-		colP = "p" + ID,
-		colFC= "fc" + ID,
-		@name = "rnk_" + ID
-	)
-
-	// MSigDB
-	
-	gseaMSigDB = GSEA
-	(
-		rnk = rnk,
-		annotations = genesetAnnotation,
-		label = ID,
-		gmt   = "/mnt/projects/generic/data/msigdb5.0/msigdb.v5.0.symbols.gmt,/mnt/projects/iamp/results/gsea/custom/mir_target_genesets.gmx",
-		options = "-nperm " + permutations + " -set_max 500 -set_min 10",
-		@name = "gseaMSigDB_" + ID,
-		@enabled = true
-	)
-	gseaMSigDBUp[ID] = gseaMSigDB.enrichedUp
-	gseaMSigDBDn[ID] = gseaMSigDB.enrichedDown
-
-	// GeneSigDB
-
-	gseaGeneSigDB = GSEA
-	(
-		rnk = rnk,
-		annotations = genesetAnnotation,
-		label = ID,
-		gmt   = "/mnt/projects/generic/data/GeneSigDB/ALL_SIGSv4.nodup.gmt",
-		options = "-nperm " + permutations + " -set_max 1000 -set_min 5",
-		@name = "gseaGeneSigDB_" + ID,
-		@enabled = true
-	)
-	gseaGeneSigDBUp[ID] = gseaGeneSigDB.enrichedUp
-	gseaGeneSigDBDn[ID] = gseaGeneSigDB.enrichedDown
-	
-	// DSigDB
-
-	gseaDSigDB = GSEA
-	(
-		rnk = rnk,
-		annotations = genesetAnnotation,
-		label = ID,
-		gmt   = "/mnt/projects/generic/data/DSigDB/DSigDB_v1.0_All.nodup.gmt",
-		options = "-nperm " + permutations + " -set_max 1000 -set_min 3",
-		@name = "gseaDSigDB_" + ID,
-		@enabled = true
-	)
-	gseaDSigDBUp[ID] = gseaDSigDB.enrichedUp
-	gseaDSigDBDn[ID] = gseaDSigDB.enrichedDown
-	
-	if (ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER") 
-	{
-		groupsGSEAReport[ID] = group
-	}
-}
-
-gseaReportMSigDB = getGSEAReportMSigDB
-(
-	enrichedUp = gseaMSigDBUp,
-	enrichedDn = gseaMSigDBDn,
-	groups=groups,
-	@enabled = true 
-)
-
-gseaReportGeneSigDB = getGSEAReportGeneSigDB
-(
-	enrichedUp = gseaGeneSigDBUp,
-	enrichedDn = gseaGeneSigDBDn,
-	groups=groups,
-	tableReportGroups=groupsGSEAReport
-)
-
-gseaReportDSigDB = getGSEAReportDSigDB
-(
-	enrichedUp = gseaDSigDBUp,
-	enrichedDn = gseaDSigDBDn,
-	groups=groups,
-	@enabled = true 
 )
 
 //------------------------------------------------------------------------------------------------
@@ -748,6 +660,8 @@ boxplotCRA = ExpressionBoxPlot
 	nCol = 10,
 	nRow = 12,
 	height=9,
+	labelOutliers=true,
+	cexSampleLabel=0.3,
 	caption = 'Expression of genes located on chromosome 21 in common region of amplification (CRA), as defined by Strefford et al. (2006). This region extends from 33,192,000 bp to 39,796,000 bp.',
 	sectionTitle="Common region of amplification (CRA)", 
 	sectionType="subsection"
@@ -763,6 +677,8 @@ boxplotRibosomalProteins = ExpressionBoxPlot
 	nRow = 7,
 	nCol = 10,
 	height=9,
+	labelOutliers=true,
+	cexSampleLabel=0.3,
 	caption = 'Expression of genes coding for ribosomal proteins.',
 	sectionTitle="Ribosomal proteins", 
 	sectionType="subsection"
@@ -778,8 +694,70 @@ boxplotEpigeneticModifiers = ExpressionBoxPlot
 	nRow = 4,
 	nCol = 7,
 	height=9,
+	labelOutliers=true,
 	caption = 'Expression of epigenetic modifier genes. EHMT2=G9A; KMT2A=MLL1; KMT2D=MLL2; KMT2C=MLL3.',
 	sectionTitle="Epigenetic modifiers", 
+	sectionType="subsection"
+)
+
+boxplotProtocadherin = ExpressionBoxPlot
+(
+	expr   = deseqExprMatrix.expr,
+	groups = sampleGroupsSimple,
+	groupOrder = "CD19,ER,DS,iAMP",
+	annotation = geneAnnot,
+	hgnc = "PCDHGB3,PCDHGA10,PCDHGA9,PCDHGC3,PCDHGA1,PCDHGA6,PCDHGA7,PCDHGA4,PCDHGA8,PCDHGB6,PCDHGC5,PCDHGB1,PCDHGA2,PCDHGA5,PCDHGC4,PCDHGA12,PCDHGA3,PCDHGB2,PCDHGB7,PCDHGB4,PCDHGA11",
+	nRow = 4,
+	nCol = 6,
+	height=9,
+	labelOutliers=true,
+	caption = 'Expression of protocadherin gamma gene cluster.',
+	sectionTitle="Protocadherin gamma", 
+	sectionType="subsection"
+)
+
+boxplotMartens = ExpressionBoxPlot
+(
+	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
+	groups = sampleGroupsSimple  @require @doc="Sample sets",
+	groupOrder = "CD19,ER,DS,iAMP",
+	annotation = geneAnnot           @require @doc="Gene annotations",
+	hgnc = "MBD6BP2,FHOD1,PLEK,KRI1,DENND3,DNM2,PLXND1,MCAM,ADAM8,FLT3,PLEKHO1,PSAP,CSK,DDIT4,PTPN6,NRXN2,MYO9B,C15orf39,NCOR2,RASGRP2,PREX1,GALNT6,IFNAR2,HECW1,CYTH4,C5AR1,CTSD,FBXO46,AKNA",
+	nCol = 7,
+	nRow = 4,
+	labelOutliers=true,
+	caption = 'Expression of top-28 up-regulated genes in iAMP21 vs. non-iAMP21 samples that overlap with MSigDB 5.0 MARTENS_BOUND_BY_PML_RARA_FUSION gene set.',
+	sectionTitle="Martens bound by PML/RARA fusion", 
+	sectionType="subsection"
+)
+
+boxplotPark2003Table2 = ExpressionBoxPlot
+(
+	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
+	groups = sampleGroupsSimple  @require @doc="Sample sets",
+	groupOrder = "CD19,ER,DS,iAMP",
+	annotation = geneAnnot           @require @doc="Gene annotations",
+	hgnc = "PLEK,PSAP,PTPN6,CEBPA,SMOX,TNFAIP2,NCF1,RARG,MERTK,FLNB,ELF4,LSP1,GYPC,TNFRSF1B,THBD,ST3GAL1,NDRG1,ID1,IDH1,LITAF,SLA",
+	nCol = 6,
+	nRow = 4,
+	labelOutliers=true,
+	caption = 'Genes up-regulated in iAMP21 vs. non-iAMP21 samples representing the core enrichment genes in GeneSigDB gene set 12893766-Table2 (Park et al., 2003). This study performed a comparative analysis of genes regulated by PML/RAR alpha and PLZF/RAR alpha in response to retinoic acid using oligonucleotide arrays. The genes shown here were found up-regulated in APL fusion protein-expressing cells upon retinoid treatment.',
+	sectionTitle="Retinoid up-regulated genes in APL fusion protein-expressing cells", 
+	sectionType="subsection"
+)
+
+boxplotHIST1Cluster = ExpressionBoxPlot
+(
+	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
+	groups = sampleGroupsSimple  @require @doc="Sample sets",
+	groupOrder = "CD19,ER,DS,iAMP",
+	annotation = geneAnnot           @require @doc="Gene annotations",
+	hgnc = "HIST1H2BJ,HIST1H2BD,HIST1H4H,HIST1H2AC,HIST1H2AG,HIST1H2BF,HIST1H2BK",
+	nCol = 4,
+	nRow = 2,
+	labelOutliers=true,
+	caption = 'HIST1 histones',
+	sectionTitle="HIST1 histones", 
 	sectionType="subsection"
 )
 
@@ -792,15 +770,15 @@ boxplotOther = ExpressionBoxPlot
 	hgnc = "ETV6,RUNX1,CRLF2,P2RY8,EBF1,PAX5,VPREB1,HMGN1,MME,CD34,CD19,MS4A1,SPI1,ETS2,GATA2,GAPDH,KIT,ERG,LGMN,TEK,CD40,TRAF1,TRAF2,TRAF3,TRAF5,MLLT6,MYC,GUSB",
 	nCol = 6,
 	nRow = 5,
+	labelOutliers=true,
 	caption = 'Expression of other selected genes of interest. MME=CD10; MS4A1=CD20; KIT=c-Kit; TEK=Tie-2; PU.1=SPI1',
 	sectionTitle="Other genes of interest", 
 	sectionType="subsection"
 )
 
-
 boxplotSelectedGenes = LatexCombiner
 (
-	array        = {boxplotCRA.document, boxplotRibosomalProteins.document, boxplotEpigeneticModifiers.document, boxplotOther.document}, 
+	array        = {boxplotCRA.document, boxplotRibosomalProteins.document, boxplotEpigeneticModifiers.document, boxplotProtocadherin.document, boxplotMartens.document, boxplotPark2003Table2.document, boxplotHIST1Cluster.document, boxplotOther.document}, 
 	pagebreak    = true,
 	sectionTitle = "Expression values of selected genes", 
 	sectionType  = "section"
@@ -835,22 +813,7 @@ pgeReport = LatexCombiner
 )
 
 //------------------------------------------------------------------------------------------------
-//--- FUNCTIONAL ANALYSIS REPORT
-//------------------------------------------------------------------------------------------------
-
-include "functionalAnalysis.and"
-funcReport = createFunctionalAnalysisReport
-(
-	geneGO=geneGO,
-	groups=groups, 
-	degTables=degTables, 
-	gstats=degAllLst, 
-	degLst=degCalledLst,
-	@enabled = useFunct
-)
-
-//------------------------------------------------------------------------------------------------
-//--- FINAL REPORTS
+//--- COMBINED REPORT
 //------------------------------------------------------------------------------------------------
 
 rConfig = RConfigurationReport(packages = "base,csbl.go,DESeq2,igraph", sectionType = "section")
@@ -876,9 +839,6 @@ combinedReport = LatexCombiner
 		boxplotSelectedGenes,
 		pgeReport,
 		degReportMir,
-		gseaReportMSigDB,
-		gseaReportGeneSigDB,
-		gseaReportDSigDB,
 		rConfig.report
 	}
 )
@@ -892,6 +852,25 @@ combinedPDF = LatexPDF
 	verbose  = false
 )
 
+@out.out.filename = shortName + "-main.pdf"
+OUTPUT(combinedPDF.document)
+
+//------------------------------------------------------------------------------------------------
+//--- FUNCTIONAL ANALYSIS REPORT
+//------------------------------------------------------------------------------------------------
+
+include "functionalAnalysis.and"
+
+funcReport = createFunctionalAnalysisReport
+(
+	geneGO    = geneGO,
+	groups    = groups, 
+	degTables = degTables, 
+	gstats    = degAllLst, 
+	degLst    = degCalledLst,
+	@enabled  = runFunct
+)
+
 functioPDF = LatexPDF
 (
 	document = funcReport,
@@ -899,12 +878,203 @@ functioPDF = LatexPDF
 	footer   = docTemplate.footer,
 	useRefs  = true,
 	verbose  = false,
-	@enabled = useFunct
+	@enabled = runFunct
 )
 	
-
-OUTPUT(combinedPDF.document)
 OUTPUT(functioPDF.document)
+
+//------------------------------------------------------------------------------------------------
+//--- GENE SET ENRICHMENT ANALYSIS (GSEA)
+//------------------------------------------------------------------------------------------------
+include "gsea.and"
+
+gseaMSigDBUp = record()
+gseaMSigDBDn = record()
+gseaDSigDBUp = record()
+gseaDSigDBDn = record()
+gseaGeneSigDBUp = record()
+gseaGeneSigDBDn = record()
+gseaTFTargetsUp = record()
+gseaTFTargetsDn = record()
+
+permutations = 5000
+
+gseaTableReportGroups = record()
+for ID, group : groups 
+{	
+	rnk = DEG2Rnk
+	(
+		deg = degAllLst[ID],
+		annotation = geneNames,
+		colP = "p" + ID,
+		colFC= "fc" + ID,
+		@name = "rnk_" + ID,
+		@enabled = runGseaMSigDB || runGseaGeneSigDB || runGseaDSigDB || runGseaTFTargets
+	)
+
+	// MSigDB
+	
+	gseaMSigDB = GSEA
+	(
+		rnk = rnk,
+		annotations = genesetAnnotation,
+		label = ID,
+		gmt   = "/mnt/projects/generic/data/msigdb5.0/msigdb.v5.0.symbols.gmt,/mnt/projects/iamp/results/gsea/custom/mir_target_genesets.gmx",
+		options = "-nperm " + permutations + " -set_max 500 -set_min 10",
+		@memory  = 5000,	
+		@name = "gseaMSigDB_" + ID,
+		@enabled = runGseaMSigDB
+	)
+	gseaMSigDBUp[ID] = gseaMSigDB.enrichedUp
+	gseaMSigDBDn[ID] = gseaMSigDB.enrichedDown
+
+	// GeneSigDB
+
+	gseaGeneSigDB = GSEA
+	(
+		rnk = rnk,
+		annotations = genesetAnnotation,
+		label = ID,
+		gmt   = "/mnt/projects/generic/data/GeneSigDB/ALL_SIGSv4.nodup.gmt",
+		options = "-nperm " + permutations + " -set_max 1000 -set_min 5",
+		@memory  = 5000,	
+		@name = "gseaGeneSigDB_" + ID,
+		@enabled = runGseaGeneSigDB
+	)
+	gseaGeneSigDBUp[ID] = gseaGeneSigDB.enrichedUp
+	gseaGeneSigDBDn[ID] = gseaGeneSigDB.enrichedDown
+	
+	// DSigDB
+
+	gseaDSigDB = GSEA
+	(
+		rnk = rnk,
+		annotations = genesetAnnotation,
+		label = ID,
+		gmt   = "/mnt/projects/generic/data/DSigDB/DSigDB_v1.0_All.nodup.gmt",
+		options = "-nperm " + permutations + " -set_max 1000 -set_min 3",
+		@memory  = 5000,	
+		@name = "gseaDSigDB_" + ID,
+		@enabled = runGseaDSigDB
+	)
+	gseaDSigDBUp[ID] = gseaDSigDB.enrichedUp
+	gseaDSigDBDn[ID] = gseaDSigDB.enrichedDown
+
+	// Encode ChIP-seq TF target gene sets from UCSC: 	
+	// mysql --user=genome --host=genome-mysql.cse.ucsc.edu --database=hg19 --column-names=FALSE --connect-timeout=10000 -B -A -e "select TF, '' AS DESCRIPTION, GROUP_CONCAT(HGNC SEPARATOR ' ') AS HGNC from (select DISTINCT TF.name AS TF, X.geneSymbol AS HGNC from wgEncodeRegTfbsClusteredV3 as TF join knownGene as GENE on TF.chrom=GENE.chrom and TF.chromStart BETWEEN GENE.txStart-2000 and GENE.txStart+2000 join kgXref as X on GENE.name=X.kgID WHERE TF.score=1000 AND X.geneSymbol IS NOT NULL) AS RESULT GROUP BY TF;" | sed 's/ /\t/g' | perl -ne 's/^([^\t]+)/$1_ENCODE/; print $_' > /mnt/projects/iamp/data/anduril/encode_tf_chipseq.ucsc.hg19.gmt
+	
+	// JASPAR CORE target gene sets from oPOSSUM:
+	// perl /mnt/projects/iamp/scripts/opposum2gmt.pl
+	
+	gseaTFTargets = GSEA
+	(
+		rnk = rnk,
+		annotations = genesetAnnotation,
+		label = ID,
+		gmt   = "/mnt/projects/iamp/data/anduril/encode_tf_chipseq.ucsc.hg19.gmt,/mnt/projects/generic/data/pazar/pazar.gmt,/mnt/projects/generic/data/msigdb5.0/c3.tft.v5.0.symbols.gmt,/mnt/projects/generic/data/opossum3/jaspar_core.gmt",
+		options = "-nperm " + permutations + " -set_max 5000 -set_min 3",
+		@memory  = 5000,	
+		@name = "gseaTFTargets_" + ID,
+		@enabled = runGseaTFTargets
+	)
+	gseaTFTargetsUp[ID] = gseaTFTargets.enrichedUp
+	gseaTFTargetsDn[ID] = gseaTFTargets.enrichedDown
+
+	// generate table reports only for main groups of interest to reduce number of output pages 	
+	if (ID == "TumorVsNormal" || ID == "iAMPvsDS" || ID == "iAMPvsER" || ID == "ERvsDS" || ID == "iAMPvsNoniAMP" || ID == "DSvsNonDS" || ID == "ERvsNonER") 
+	{
+		gseaTableReportGroups[ID] = group
+	}
+}
+
+gseaReportMSigDB = getGSEAReportMSigDB
+(
+	enrichedUp = gseaMSigDBUp,
+	enrichedDn = gseaMSigDBDn,
+	tableReportGroups = gseaTableReportGroups,
+	minSetSize        = 10,
+	maxSetSize        = 500,
+	@enabled = runGseaMSigDB
+)
+
+gseaReportGeneSigDB = getGSEAReportGeneSigDB
+(
+	enrichedUp        = gseaGeneSigDBUp,
+	enrichedDn 	      = gseaGeneSigDBDn,
+	tableReportGroups = gseaTableReportGroups,
+	minSetSize        = 5,
+	maxSetSize        = 1000,
+	@enabled = runGseaGeneSigDB
+)
+
+gseaReportTFTargets = getGSEAReportTFTargets
+(
+	enrichedUp = gseaTFTargetsUp,
+	enrichedDn = gseaTFTargetsDn,
+	tableReportGroups = gseaTableReportGroups,
+	minSetSize        = 10,
+	maxSetSize        = 5000,
+	@enabled = runGseaTFTargets
+)
+
+gseaReportDSigDB = getGSEAReportDSigDB
+(
+	enrichedUp = gseaDSigDBUp,
+	enrichedDn = gseaDSigDBDn,
+	tableReportGroups = gseaTableReportGroups,
+	minSetSize        = 3,
+	maxSetSize        = 1000,
+	@enabled = runGseaDSigDB
+)
+
+gseaReportOverlap = getGSEAOverlapReport
+(
+	enrichedMSigDBUp      = gseaMSigDBUp, 		enrichedMSigDBDn      = gseaMSigDBDn,
+	enrichedGeneSigDBUp   = gseaGeneSigDBUp,	enrichedGeneSigDBDn   = gseaGeneSigDBDn,
+	enrichedDSigDBUp      = gseaDSigDBUp,   	enrichedDSigDBDn 	  = gseaDSigDBDn,
+	groups 				  = gseaTableReportGroups,
+	similarityCutoffsTree = record(
+								TumorVsNormalUp = 0.25,	TumorVsNormalDn = 0.1,
+								iAMPvsNoniAMPUp = 0.2,	iAMPvsNoniAMPDn = 0.1,
+								DSvsNonDSUp     = 0.3,	DSvsNonDSDn     = 0.3,
+								ERvsNonERUp     = 0.1,	ERvsNonERDn     = 0.1,
+								iAMPvsDSUp      = 0.1,	iAMPvsDSDn      = 0.3,
+								iAMPvsERUp      = 0.2,	iAMPvsERDn      = 0.1,
+								ERvsDSUp        = 0.1,	ERvsDSDn        = 0.2
+							),
+	sigCutoffs 			  = record(
+								TumorVsNormalUp = 1e-5,	TumorVsNormalDn = 0.001,
+								iAMPvsNoniAMPUp = 1e-3,	iAMPvsNoniAMPDn = 1e-3,
+								DSvsNonDSUp     = 1e-5,	DSvsNonDSDn     = 1e-2,
+								ERvsNonERUp     = 1e-2,	ERvsNonERDn     = 1e-4,
+								iAMPvsDSUp      = 1e-2,	iAMPvsDSDn      = 1e-6,
+								iAMPvsERUp      = 1e-4,	iAMPvsERDn      = 1e-2,
+								ERvsDSUp        = 1e-2,	ERvsDSDn        = 1e-6
+							)
+)
+
+combinedReportGsea = LatexCombiner
+(
+	array = {
+		gseaReportMSigDB,
+		gseaReportGeneSigDB,
+		gseaReportTFTargets,
+		gseaReportDSigDB,
+		gseaReportOverlap
+	}
+)
+
+combinedPDFGsea = LatexPDF
+(
+	document = combinedReportGsea,
+	header   = latexHeaderGsea,
+	footer   = docTemplate.footer,
+	useRefs  = true,
+	verbose  = false
+)
+
+@out.out.filename = shortName + "-GSEA.pdf"
+OUTPUT(combinedPDFGsea.document)
 
 //------------------------------------------------------------------------------------------------
 //--- EXCEL FILES WITH DIFFERENTIALLY EXPRESSED GENES

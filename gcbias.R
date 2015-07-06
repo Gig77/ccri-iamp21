@@ -18,6 +18,9 @@ plex <- ifelse(names %in% c("A3", "A4", "A5", "A7", "A8", "A9", "A10"), "plex 3"
 plex <- ifelse(names %in% c("A11", "A12", "A13", "D1", "D2", "D3", "D4"), "plex 4", plex)
 plex <- ifelse(names %in% c("D5", "D6", "D7", "D8", "S1", "S2", "S3"), "plex 5", plex)
 plex <- as.factor(plex)
+prep <- rep(NA, length(names))
+prep[names %in% c("A2", "A4", "A7")] <- "Conny"
+prep[names %in% c("A10", "A11", "A12", "A13", "A1", "A3", "A8", "A9")] <- "Doris"
 
 # filter for expressed transcripts
 counts.expressed <- counts[rowMeans(counts)>10,]
@@ -26,7 +29,8 @@ nrow(counts.expressed)
 
 # get GC content and length of (longest) transcript per gene
 library("biomaRt")
-mart <- useMart(biomart="ensembl", dataset="hsapiens_gene_ensembl") # GRCh37, v75
+#mart <- useMart(biomart="ensembl", dataset="hsapiens_gene_ensembl") # GRCh37, v75
+mart <- useMart(biomart="ENSEMBL_MART_ENSEMBL", host="grch37.ensembl.org", path="/biomart/martservice" ,dataset="hsapiens_gene_ensembl") # GRCh37, v75
 result <- select(mart, keys=rownames(counts), keytype="ensembl_gene_id", columns=c("ensembl_gene_id", "percentage_gc_content", "transcript_length"))
 result.longest <- result[ave(result$transcript_length, result$ensembl_gene_id, FUN=max) == result$transcript_length,]
 feature <- data.frame(row.names=result.longest$ensembl_gene_id, gc=result.longest$percentage_gc_content, length=result.longest$transcript_length)
@@ -37,7 +41,7 @@ common <- intersect(rownames(counts.expressed), rownames(feature))
 length(common)
 
 library(EDASeq)
-data <- newSeqExpressionSet(counts=counts.expressed[common,], featureData=feature[common,], phenoData=data.frame(lane=lane, plex=plex, row.names=colnames(counts.expressed)))
+data <- newSeqExpressionSet(counts=counts.expressed[common,], featureData=feature[common,], phenoData=data.frame(lane=lane, plex=plex, prep=prep, row.names=colnames(counts.expressed)))
 
 pdf("/mnt/projects/iamp/results/gcbias.pdf", width=10, height=15)
 par(mfrow=c(2,1))
@@ -66,5 +70,8 @@ biasPlot(data[,plex %in% c("plex 3", "plex 1")], "gc", log=TRUE, ylim=c(3.5, 5.5
 # bias plots for two selected samples with very different GC bias
 biasPlot(data[,c("A11", "C5")], "gc", log=TRUE, ylim=c(3.5, 5.5), color_code=1, main="A11 vs. C5")
 biasBoxplot(log(counts(data)[,"A11"]+0.1) - log(counts(data)[,"C5"]+0.1), fData(data)$gc, ylim=c(-5, 5), main="A11 vs. C5")
+
+# gc plot prep Conny vs. prep Doris
+biasPlot(data[,prep %in% c("Conny", "Doris")], "gc", log=TRUE, ylim=c(3.5, 5.5), color_code=3, main="iAMP21 samples by sample prep")
 
 dev.off()

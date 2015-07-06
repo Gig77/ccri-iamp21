@@ -34,6 +34,8 @@ function getDEGBoxPlots
 		geneIds = degsFiltered,
 		nRow = 4,
 		nCol = 7,
+		labelOutliers=true,
+		cexSampleLabel=0.3,
 		caption = caption,
 		sectionTitle=sectionTitle, 
 		sectionType=sectionType

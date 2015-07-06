@@ -8,7 +8,7 @@ goGroupTableRefs = XrefLinkRule
 	moksiskaan = moksiskaanInit.connection,
 	columns    = "GO=GO,Ensembl=Gene",
 	xrefTypes  = XrefType_Gene_Ontology+","+XrefType_Ensembl_gene,
-	@enabled   = useFunct
+	@enabled   = runFunct
 )
 
 function FunctionalAnalysis
@@ -166,7 +166,7 @@ function createFunctionalAnalysisReport
 			numMatches    = 1,
 			parentFilter  = true,
 			terms         = goGroup.terms,
-			@enabled      = useFunct,
+			@enabled      = runFunct,
 			@name         = "goGenes_"+goName
 		)
 		goGroup['genes'] = goGroupGenes.hits
@@ -190,7 +190,7 @@ function createFunctionalAnalysisReport
                 FROM   table2
                 WHERE  ("meanExpr'''+ID+'''" < 0.02)
             ''',
-            @enabled = useFunct,
+            @enabled = runFunct,
             @name    = "statusTable_"+ID
 		)
 
