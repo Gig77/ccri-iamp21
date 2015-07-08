@@ -174,7 +174,6 @@ function createFunctionalAnalysisReport
 
 	funcReps  = record()
 	for ID, group : groups {
-  		std.echo("***** Functional analysis for", ID, "comparison.")
 
 		degTable = degTables[ID]
 		stest = gstats[ID]
@@ -203,7 +202,8 @@ function createFunctionalAnalysisReport
      		goGroups     = goGroups,
             title        = group.caseG+" versus "+group.controlG,
             latexList    = funcReps,
-            @name        = "geneFunction_"+ID
+            @name        = "geneFunction_"+ID,
+            @enabled     = runFunct
 		)
 	}
 

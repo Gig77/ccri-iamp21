@@ -30,7 +30,7 @@ function getGSEAReportMSigDB
 		sigCutoff = fdr,
 		hsigCutoff = 1e-6,
 		regexCategoryNames = "MSIGDB_C2_PATHWAYS",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.7,
 		pdfWidth = 10,
 		pdfHeight = 15,
@@ -89,7 +89,7 @@ function getGSEAReportMSigDB
 		sigCutoff = fdr,
 		hsigCutoff = 1e-6,
 		regexCategoryNames = "MSIGDB_C5_GO",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.8,
 		pdfWidth = 10,
 		pdfHeight = 15,
@@ -148,7 +148,7 @@ function getGSEAReportMSigDB
 		sigCutoff = fdr,
 		hsigCutoff = 1e-8,
 		regexCategoryNames = "MSIGDB_C1_POSITIONAL",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.9,
 		pdfWidth = 10,
 		pdfHeight = 15,
@@ -207,7 +207,7 @@ function getGSEAReportMSigDB
 		sigCutoff = fdr,
 		hsigCutoff = 0.01,
 		regexCategoryNames = "MSIGDB_C3_MOTIF_MIR",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.9,
 		pdfWidth = 10,
 		pdfHeight = 15,
@@ -266,7 +266,7 @@ function getGSEAReportMSigDB
 		sigCutoff = fdr,
 		hsigCutoff = 0.05,
 		regexGeneSetNames = "(PREDICTED|VALIDATED|HENNING)",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.9,
 		pdfWidth = 10,
 		pdfHeight = 8,
@@ -325,7 +325,7 @@ function getGSEAReportMSigDB
 		sigCutoff = fdr,
 		hsigCutoff = 1e-6,
 		regexGeneSetNames = "SIGNALING",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.7,
 		@name = "heatmap"+category
 	)
@@ -385,7 +385,7 @@ function getGSEAReportMSigDB
 		NESCutoff = nes,
 		regexCategoryNames = "MSIGDB_C2_CGP",
 		regexGeneSetNames = "(_UP|_DN)$",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.7,
 		@name = "heatmap"+category
 	)
@@ -443,7 +443,7 @@ function getGSEAReportMSigDB
 		hsigCutoff = 1e-6,
 		regexCategoryNamesExclude = "(MSIGDB_C1_POSITIONAL|MSIGDB_C2_PATHWAYS|MSIGDB_C3_MOTIF|MSIGDB_C4_COMPUTATIONAL|MSIGDB_C5_GO)",
 		regexGeneSetNamesExclude = "(_UP|_DN)$",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.7,
 		@name = "heatmap"+category
 	)
@@ -523,7 +523,7 @@ function getGSEAReportGeneSigDB
 		sectionType = "subsection",
 		sigCutoff = fdr,
 		hsigCutoff = 1e-6,
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.7,
 		@name = "heatmap"+category
 	)
@@ -607,7 +607,7 @@ function getGSEAReportTFTargets
 		sectionType = "subsection",
 		sigCutoff = fdr,
 		hsigCutoff = 1e-6,
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.9,
 		@name = "heatmap"+category
 	)
@@ -691,7 +691,7 @@ function getGSEAReportDSigDB
 		sigCutoff = fdr,
 		hsigCutoff = 1e-3,
 		regexCategoryNames = "DSIGDB_D1_FDA",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 1,
 		pdfWidth = 11,
 		pdfHeight = 8,
@@ -750,7 +750,7 @@ function getGSEAReportDSigDB
 		sigCutoff = fdr,
 		hsigCutoff = 0.01,
 		regexCategoryNames = "DSIGDB_D2_KINASE",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 1,
 		@name = "heatmap"+category
 	)
@@ -806,7 +806,7 @@ function getGSEAReportDSigDB
 		sigCutoff = fdr,
 		hsigCutoff = 1e-6,
 		regexCategoryNames = "DSIGDB_D3_CMAP_PERTURBATION",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.9,
 		@name = "heatmap"+category
 	)
@@ -866,7 +866,7 @@ function getGSEAReportDSigDB
 		sigCutoff = fdr,
 		hsigCutoff = 1e-6,
 		regexCategoryNames = "DSIGDB_D4",
-		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
 		cexRow = 0.9,
 		@name = "heatmap"+category
 	)
@@ -929,11 +929,13 @@ overlapTableConvertScript = StringInput(content=
 function getGSEAOverlapReport
 (
 	record enrichedMSigDBUp,
-	record enrichedGeneSigDBUp,
-	record enrichedDSigDBUp,
 	record enrichedMSigDBDn,
+	record enrichedGeneSigDBUp,
 	record enrichedGeneSigDBDn,
+	record enrichedDSigDBUp,
 	record enrichedDSigDBDn,
+	record enrichedTFTargetsUp,
+	record enrichedTFTargetsDn,
 	record groups,
 	record similarityCutoffsTree,
 	record sigCutoffs
@@ -962,7 +964,7 @@ function getGSEAOverlapReport
 		
 		overlap = GSEAOverlap
 		(
-			enrichedGeneSets = record(MSigDB=enrichedMSigDBUp[ID], GeneSigDB=enrichedGeneSigDBUp[ID], DSigDB=enrichedDSigDBUp[ID]),
+			enrichedGeneSets = record(MSigDB=enrichedMSigDBUp[ID], GeneSigDB=enrichedGeneSigDBUp[ID], DSigDB=enrichedDSigDBUp[ID], TFTargets=enrichedTFTargetsUp[ID]),
 			caption = "Similarity among gene sets enriched (FDR equal or lower " + sigCutoff + ") for genes up-regulated in " + group.caseG + " compared to " + group.controlG + ". " +
 					  "The Jaccard index is used to measure similarity and reflects the amount of core enrichment genes shared between two gene sets. " +
 					  "Clustering performed by average-linkage hierarchical clustering. " +
@@ -1027,7 +1029,7 @@ function getGSEAOverlapReport
 
 		overlap = GSEAOverlap
 		(
-			enrichedGeneSets = record(MSigDB=enrichedMSigDBDn[ID], GeneSigDB=enrichedGeneSigDBDn[ID], DSigDB=enrichedDSigDBDn[ID]),
+			enrichedGeneSets = record(MSigDB=enrichedMSigDBDn[ID], GeneSigDB=enrichedGeneSigDBDn[ID], DSigDB=enrichedDSigDBDn[ID], TFTargets=enrichedTFTargetsDn[ID]),
 			caption = "Similarity among gene sets enriched (FDR equal or lower " + sigCutoff + ") for genes down-regulated in " + group.caseG + " compared to " + group.controlG + ". " +
 					  "The Jaccard index is used to measure similarity and reflects the amount of core enrichment genes shared between two gene sets. " +
 					  "Clustering performed by average-linkage hierarchical clustering. " +

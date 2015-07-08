@@ -1,3 +1,9 @@
+hyperlinkRule = StringInput(content=
+	"URL\trefCol\tvalueCol\n" +
+	"http://www.ensembl.org/id/$ID$\tEnsembl\tEnsembl\n" +
+	"http://www.genecards.org/cgi-bin/carddisp.pl?gene=$ID$\tGene\tGene\n"
+)
+
 function getDEGTableReport
 (
 	CSV	degs,
@@ -61,7 +67,7 @@ function getDEGTableReport
 	degReport = CSV2Latex
 	(
 		tabledata    = degsFiltered,
-		refs         = degReportRefs,
+		refs         = hyperlinkRule,
 		attach       = false,
 		caption      = caption,
 		columns      = "Ensembl,Gene,fc,qValue,exprA,exprB,Band,Description",

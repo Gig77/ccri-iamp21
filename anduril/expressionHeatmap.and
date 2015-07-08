@@ -53,7 +53,7 @@ function getHeatmapReport
 		sectionType    = sectionType,
 		symKey         = true,
 		width          = 16,
-		colorScheme    = "heat"
+		colorScheme    = "redblue"
 	)
 
 	return heatmap.report
