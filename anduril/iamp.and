@@ -6,11 +6,12 @@ title = "iAMP21 RNA-seq"
 shortName = "iAMP21"
 authors = "Christian Frech"
 
-runFunct = false
-runGseaMSigDB = false
-runGseaGeneSigDB = false
-runGseaDSigDB = false
-runGseaTFTargets = false
+runFunct = true
+runGseaMSigDB = true
+runGseaGeneSigDB = true
+runGseaDSigDB = true
+runGseaTFTargets = true
+runMutations = true
 
 PROJECT_BASE="/mnt/projects/iamp"
 inputBamDir = INPUT(path=PROJECT_BASE+"/data/bam", recursive=false)
@@ -18,6 +19,7 @@ inputBamFiles = Folder2Array(folder1 = inputBamDir, filePattern = "C57C3ACXX_CV_
 sampleAnnotation = INPUT(path=PROJECT_BASE+"/data/qlucore/annotations.txt")
 comparisons = INPUT(path=PROJECT_BASE+"/data/anduril/comparisons.tsv")
 gtf = INPUT(path=PROJECT_BASE+"/data/Homo_sapiens.GRCh37.75.etv6runx1.gtf.gz")
+referenceGenomeFasta = INPUT(path="/data_synology/anduril/docker-images/anduril-gsnap_2014_12_28-human_g1k_v37/db/human_g1k_v37/human_g1k_v37_etv6runx1.fasta") 
 
 //zcat /mnt/projects/iamp/data/Homo_sapiens.GRCh37.75.etv6runx1.gtf.gz | grep 'gene_biotype "rRNA"' | perl -ne '/(ENSG[^\"]+)/; print "$1\n"' | sort | uniq > /tmp/ensemblid.rrna
 //zcat /mnt/projects/iamp/data/Homo_sapiens.GRCh37.75.etv6runx1.gtf.gz | grep -vf /tmp/ensemblid.rrna | gzip -c > /mnt/projects/iamp/data/Homo_sapiens.GRCh37.75.etv6runx1.norRNA.gtf.gz
@@ -29,11 +31,13 @@ ensemblDb = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/etc/ensemblH
 geneAnnot = INPUT(path=PROJECT_BASE+"/data/anduril/ensembl.homo_sapiens_75_37.geneAnnotations.tsv") // downloaded via Ensembl biomart http://feb2014.archive.ensembl.org/biomart/martview/b57730c5d3013cd648bcd2c966113d42
 latexHeader = INPUT(path=PROJECT_BASE+"/scripts/anduril/latexHeader")
 latexHeaderGsea = INPUT(path=PROJECT_BASE+"/scripts/anduril/latexHeaderGsea")
+latexHeaderMutation = INPUT(path=PROJECT_BASE+"/scripts/anduril/latexHeaderMutation")
 genesetAnnotation = INPUT(path=PROJECT_BASE+"/results/geneset_annotation.tsv")
 
 fcLimitInclude  = 1.00
 pLimitInclude   = 1e-5
 qLimitInclude   = 1e-2
+qLimitExclude   = 0.3
 minExprInclude  = 100.00
 maxNA    		= 0.90    // fraction of samples allowed to have NA values before gene is discarded
 
@@ -176,7 +180,7 @@ for bam : std.iterArray(inputBamFiles)
 		docker   = "biowaste:5000/anduril/gsnap",
 		@cpu     = 10, 
 		@memory  = 40000,
-		@name    = "gsnap_"+bam.key 
+		@name    = "gsnap_" + bam.key 
 	)
 	alignedBams[bam.key] = gsnap.alignment
 }
@@ -320,7 +324,7 @@ for ID, group : comparisonGroups
 		(
 			table1 = degCalledLst["iAMPvsNoniAMP"] @require,
 			table2 = degAllLst["ERvsDS"]  @require,
-			query  = '''SELECT table1.* FROM table1 LEFT OUTER JOIN table2 ON table1."ids" = table2."ids" WHERE table2."qERvsDS" IS NULL OR table2."qERvsDS" >= 0.3''',
+			query  = '''SELECT table1.* FROM table1 LEFT OUTER JOIN table2 ON table1."ids" = table2."ids" WHERE table2."qERvsDS" IS NULL OR table2."qERvsDS" >= ''' + qLimitExclude,
 			@name  = "degCalled_" + ID
 		)
 		degCalledLst[ID] = degCalled.table
@@ -412,6 +416,9 @@ for ID, group : comparisonGroups
 			G."meanExprC"                         AS "exprB",
 			G."q"                                 AS "qValue",
 			CONCAT(D."Chromosome Name", D."Band") AS "Band",
+			D."Chromosome Name"                   AS "chr",
+			D."Gene Start (bp)"                   AS "start",
+			D."Gene End (bp)"                     AS "end",
 			SUBSTR(D."Description", 1, 65)        AS "Description",
 			CASEWHEN(G."fc" > 0, 1, -1)           AS "status"
 			FROM table1 G
@@ -951,7 +958,7 @@ gseaGeneSigDBDn = record()
 gseaTFTargetsUp = record()
 gseaTFTargetsDn = record()
 
-permutations = 10
+permutations = 5000
 
 gseaTableReportGroups = record()
 for ID, group : comparisonGroups 
@@ -1145,6 +1152,33 @@ combinedPDFGsea = LatexPDF
 OUTPUT(combinedPDFGsea.document)
 
 //------------------------------------------------------------------------------------------------
+//--- MUTATION REPORT
+//------------------------------------------------------------------------------------------------
+
+include "/mnt/projects/generic/scripts/anduril/mutations.and"
+
+mutationReport = MutationReport
+(
+	alignedBams  = alignedBams,
+	sectionTitle = "Mutated genes",
+	sectionType  = "section",
+	@enabled     = runMutations
+)
+
+mutationPDF = LatexPDF
+(
+	document = mutationReport,
+	header   = latexHeaderMutation,
+	footer   = docTemplate.footer,
+	useRefs  = true,
+	verbose  = false,
+	@enabled = runMutations
+)
+
+@out.out.filename = shortName + "-mutations.pdf"
+OUTPUT(mutationPDF.document)
+
+//------------------------------------------------------------------------------------------------
 //--- EXCEL FILES WITH DIFFERENTIALLY EXPRESSED GENES
 //------------------------------------------------------------------------------------------------
 
@@ -1168,8 +1202,9 @@ degAllTable = REvaluate
 (
 	array = degAnnotatedLst @require,
 	table1 = comparisons,
+	param1 = qLimitExclude,
 	script = StringInput(content="""
-		fdrCutoff <- 0.5
+		fdrCutoff <- param1
 		for (i in 1:length(array)) {
 		  table.in <- 
 		  if (i == 1) {

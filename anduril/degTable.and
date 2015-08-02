@@ -27,42 +27,26 @@ function getDEGTableReport
 	}
 	
 	// define table caption
-	/*
-	fcLimitExclude  = 1.00
-	qLimitExclude   = 0.20
-	pLimitExclude   = 0.1
-	minExprExclude  = 100.00
-	
-	if (ID == "iAMPspecvsCD19" || ID == "DSspecvsCD19" || ID == "ERspecvsCD19" || ID == "iAMPandDSspecvsCD19") {
-		if (direction == "up") {
-			caption = "List of genes significantly lower expressed exclusively in "+group.caseG+" samples."+
-					  ' Criteria for non-differential expression among other samples were $|\log_2$ fold-change (fc)$|<'+fcLimitExclude+
-					  "$, minimum expression below "+minExprExclude+", p-value above "+pLimitExclude+", or multiple-testing corrected p-value above "+qLimitExclude+
-					  ". Expression difference shown relative to CD19+ samples."
-		} 
-		else 
-		{
-			caption = "List of genes significantly higher expressed exclusively in "+group.caseG+" samples."+
-					  ' Criteria for non-differential expression among other samples were $|\log_2$ fold-change (fc)$|<'+fcLimitExclude+
-					  "$, minimum expression below "+minExprExclude+", p-value above "+pLimitExclude+", or multiple-testing corrected p-value above "+qLimitExclude+
-					  ". Expression difference shown relative to CD19+ samples."
-		}
-	} 
-	*/
 
 	if (direction == "up") {
 		caption = "List of genes significantly higher expressed in "+group.caseG+" samples compared to "+group.controlG+
 				  ' samples, where the $\log_2$ fold-change (fc)$ \geq '+fcLimitInclude+"$ and the minimum mean expression is above "+minExprInclude+
 				  " in at least one of the two groups. The highest p-value accepted is "+pLimitInclude+
-				  ". Multiple hypothesis corrected p-values with a limit of "+qLimitInclude+" are shown as qValues. Sorted by qValue."
+				  ". Multiple hypothesis corrected p-values with a limit of "+qLimitInclude+" are shown as qValues."
 	} 
 	else 
 	{
 		caption = "List of genes significantly lower expressed in "+group.caseG+" samples compared to "+group.controlG+
 				  ' samples, where the $\log_2$ fold-change (fc)$ \leq -'+fcLimitInclude+"$ and the minimum mean expression is above "+minExprInclude+
 				  " in at least one of the two groups. The highest p-value accepted is "+pLimitInclude+
-				  ". Multiple hypothesis corrected p-values with a limit of "+qLimitInclude+" are shown as qValues. Sorted by qValue."
+				  ". Multiple hypothesis corrected p-values with a limit of "+qLimitInclude+" are shown as qValues."
 	}
+	
+	if (ID == "iAMPspecific") {
+		caption = caption + " Genes with potential differential expression between ER and DS samples (qValue below " + qLimitExclude + ") were excluded."
+	} 
+	
+	caption = caption + " Table sorted by qValue."
 
 	degReport = CSV2Latex
 	(

@@ -24,7 +24,7 @@ annotation <- read.delim("/mnt/projects/iamp/data/qlucore/annotations.txt")
 
 # use counts from anduril pipeline
 #---
-counts.norm <- read.delim("/mnt/projects/iamp/results/anduril/execute_old/deseqExprMatrix/expr.csv", row.names=1)
+counts.norm <- read.delim("/mnt/projects/iamp/results/anduril/execute/deseqExprMatrix/expr.csv", row.names=1)
 counts.norm.noCD19 <- counts.norm[!names(counts.norm) %in% c("S1", "S2", "S3")] # throw out CD19 samples in this analysis
 
 # scale data matrix
@@ -130,9 +130,9 @@ options(ucscChromosomeNames=FALSE)
 #seqlevels(ranges(biomTrack)) <- paste0("chr", seqlevels(ranges(biomTrack)))
 
 # common region of amplification (Strefford et al., 2006)
-ann.stefford <- data.frame(id=character(), seqnames=character(0), start = numeric(0), end = numeric(0), stringsAsFactors=F)
-ann.stefford <- rbind(ann.stefford, data.frame(id="CRA", seqnames="chr21", start = 33192000, end = 39796000, stringsAsFactors=F)) 
-ann.stefford <- rbind(ann.stefford, data.frame(id="CRD", seqnames="chr21", start = 43700000, end = 47000000, stringsAsFactors=F))
+ann.strefford <- data.frame(id=character(), seqnames=character(0), start = numeric(0), end = numeric(0), stringsAsFactors=F)
+ann.strefford <- rbind(ann.strefford, data.frame(id="CRA", seqnames="chr21", start = 33192000, end = 39796000, stringsAsFactors=F)) 
+ann.strefford <- rbind(ann.strefford, data.frame(id="CRD", seqnames="chr21", start = 43700000, end = 47000000, stringsAsFactors=F))
 
 # down syndrome critical region (Olson et al., 2004); ranges from gene CBR1 to gene MX1 (Table S1)
 ann.olson <- data.frame(id="DSCR", seqnames="chr21", start = 37442000, end = 42800000, stringsAsFactors=F)
@@ -180,8 +180,8 @@ for (chr in c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "c
 	dtrack.ma200 <- DataTrack(gr.ma200, name="mAvg (k=200)", chromosome = chr, groups=subtypes.withCD19, type = c("a", "confint", "g"), col=c("blue", "red", "orange", "black", "black", "black"), lty=c(1,1,1,1,2,3), ylim=c(-0.5,0.5), legend=TRUE)
 	#dtrack.win2 <- DataTrack(gr.data, name="2 bins", chromosome = chr, type = c("a", "confint", "g"), col=c("blue", "red", "orange"), window=2, ylim=c(-0.5,0.5), legend=TRUE)
 
-	if (chr %in% ann.stefford$seqnames) {
-		atrack.1 <- AnnotationTrack(ann.stefford, name="Strefford (2006)", col="black", cex=0.75, fontcolor.feature="black", rot.title=1, featureAnnotation = "id", chromosome = chr)
+	if (chr %in% ann.strefford$seqnames) {
+		atrack.1 <- AnnotationTrack(ann.strefford, name="Strefford (2006)", col="black", cex=0.75, fontcolor.feature="black", rot.title=1, featureAnnotation = "id", chromosome = chr)
 		atrack.2 <- AnnotationTrack(ann.olson, name="Olson (2004)", col="black", cex=0.75, fontcolor.feature="black", rot.title=1, featureAnnotation = "id", chromosome = chr)
 		plotTracks(c(itrack, gtrack, atrack.1, atrack.2, dtrack.all, dtrack.ma3, dtrack.ma10, dtrack.ma50, dtrack.ma200), cex.title=0.7, cex.axis=0.6)	
 	} else {
@@ -213,6 +213,18 @@ cnvs.df$integerCN <- round(cnvs.df$integerCN)
 
 cnvs.gr <- as(cnvs.df, "GRanges")
 
+# find common region of amplification (CRA)
+cnvs.gr.cra <- NA
+cnvs.samples <- unique(cnvs.gr$sample)
+for (i in 1:length(cnvs.samples)) {
+  iamps <- cnvs.gr[cnvs.gr$sample == cnvs.samples[i] & seqnames(cnvs.gr)=="chr21" & cnvs.gr$integerCN > 2,]
+  if (i == 1) {
+    cnvs.gr.cra <- iamps
+  } else {
+    cnvs.gr.cra <- intersect(cnvs.gr.cra, iamps)
+  }
+}
+
 counts.ann.withCD19 <- merge(genes[,c("ensembl_gene_id", "hgnc_symbol", "chromosome_name", "start_position", "end_position")], counts.scaled.withCD19, by.x="ensembl_gene_id", by.y="row.names")
 counts.ann.withCD19$chromosome_name <- paste0("chr", counts.ann.withCD19$chromosome_name)
 
@@ -235,6 +247,12 @@ gr.er <- gr.withCD19.ma200[,grep("^C", names(mcols(gr.withCD19.ma200)), value=T)
 gr.pc <- gr.withCD19.ma200[,grep("^D", names(mcols(gr.withCD19.ma200)), value=T)]
 gr.cd19 <- gr.withCD19.ma200[,grep("^S", names(mcols(gr.withCD19.ma200)), value=T)]
 
+# DEGs
+degs <- read.delim("/mnt/projects/iamp/results/anduril/execute/degTable_iAMPvsNoniAMP/table.csv", stringsAsFactors = F)
+degs$chr <- paste0("chr", degs$chr)
+degs$status <- ifelse(degs$status > 0, "UP", "DOWN")
+gr.degs <- makeGRangesFromDataFrame(degs, keep.extra.columns=TRUE, ignore.strand=TRUE, seqinfo=NULL)
+
 pdf("/mnt/projects/iamp/results/regional-expression.samples.pdf", width=18, height=12)
 #for (chr in c("chr21")) {
 for (chr in c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY")) {
@@ -245,20 +263,26 @@ for (chr in c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "c
 	cen.end <- max(end(itrack@range[itrack@range$type=="acen"]))
 	gtrack <- GenomeAxisTrack(range = IRanges(start = cen.start, end = cen.end, names="CEN"), showId=TRUE)
 	
-	cntrack <- AnnotationTrack(cnvs.gr, chromosome=chr, name="CNA", id=cnvs.gr$sample, shape = "box", groupAnnotation = "id", stackHeight=0.9, cex.group=0.8, fontcolor.feature="black", group=cnvs.gr$sample, min.width=1, col.line = "lightgray", col = NULL)
+	cntrack <- AnnotationTrack(cnvs.gr, chromosome=chr, name="CNA", rot.title=1, id=cnvs.gr$sample, shape = "box", groupAnnotation = "id", stackHeight=0.9, cex.group=0.8, fontcolor.feature="black", group=cnvs.gr$sample, min.width=1, col.line = "lightgray", col = NULL)
 	feature(cntrack) <- paste0("CN", cnvs.gr$integerCN)
 	
 	dtrack.er <- DataTrack(gr.er, name="ER", chromosome = chr, type = c("a", "g"), groups=names(mcols(gr.er)), ylim=c(-0.75,0.75), legend=TRUE)
 	dtrack.pc <- DataTrack(gr.pc, name="DS", chromosome = chr, type = c("a", "g"), groups=names(mcols(gr.pc)), ylim=c(-0.75,0.75), legend=TRUE)
 	dtrack.iamp <- DataTrack(gr.iamp, name="iAMP21", chromosome = chr, type = c("a", "g"), groups=names(mcols(gr.iamp)), ylim=c(-0.75,0.75), legend=TRUE)
 	dtrack.cd19 <- DataTrack(gr.cd19, name="CD19", chromosome = chr, type = c("a", "g"), groups=names(mcols(gr.cd19)), ylim=c(-0.75,0.75), legend=TRUE)
+
+	atrack.degs <- AnnotationTrack(gr.degs, chromosome=chr, name="DEGs", id=gr.degs$Gene, feature=gr.degs$status, rot.title=1, shape = "box", group=gr.degs$Gene, groupAnnotation = "id", cex.group=0.7, stackHeight=1, fontcolor.feature="black", min.width=1, col = NULL)
+	atrack.genes <- AnnotationTrack(gr, chromosome=chr, name="Genes", id=gr$Ensembl, rot.title=1, shape = "box", stacking = "dense", min.width=1, fill = "lightgray", col = "black", alpha = 0.7, alpha.title = 1)
 	
 	if (chr == "chr21") {
-		sizes <- c(0.03, 0.05, 0.12, 0.2, 0.2, 0.2, 0.2)
+	  atrack.cra <- AnnotationTrack(cnvs.gr.cra, chromosome=chr, name="CRA", id="Shared", feature="CN4", shape = "box", groupAnnotation = "id", cex.group=0.8, fontcolor.feature="black", group="CRA", min.width=1, col.line = "lightgray", col = NULL, rot.title=1)
+	  atrack.strefford <- AnnotationTrack(ann.strefford, name="Streff.", col="black", cex=0.75, fontcolor.feature="black", rot.title=1, featureAnnotation = "id", chromosome = chr)
+	  sizes <- c(0.03, 0.02, 0.03, 0.14, 0.02, 0.02, 0.1, 0.16, 0.16, 0.16, 0.16)
+	  plotTracks(c(itrack, gtrack, atrack.strefford, cntrack, atrack.cra, atrack.genes, atrack.degs, dtrack.iamp, dtrack.pc, dtrack.er, dtrack.cd19), cex.title=0.9, cex.axis=0.7, sizes=sizes, CN0="darkblue", CN1="lightblue", CN2="white", CN3="red", CN4="darkred", CRA="darkred", DOWN="blue", UP="red", collapse=FALSE)	
 	} else {
-		sizes <- c(0.03, 0.05, 0.07, 0.21, 0.21, 0.21, 0.22)
+		sizes <- c(0.03, 0.05, 0.07, 0.03, 0.08, 0.185, 0.185, 0.185, 0.185)
+		plotTracks(c(itrack, gtrack, cntrack, atrack.genes, atrack.degs, dtrack.iamp, dtrack.pc, dtrack.er, dtrack.cd19), cex.title=0.9, cex.axis=0.7, sizes=sizes, CN0="darkblue", CN1="lightblue", CN2="white", CN3="red", CN4="darkred", collapse=FALSE)	
 	}
-	plotTracks(c(itrack, gtrack, cntrack, dtrack.iamp, dtrack.pc, dtrack.er, dtrack.cd19), cex.title=0.9, cex.axis=0.7, sizes=sizes, CN0="darkblue", CN1="lightblue", CN2="white", CN3="red", CN4="darkred", collapse=FALSE)	
 }
 dev.off()
 
