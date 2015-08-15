@@ -176,11 +176,12 @@ for bam : std.iterArray(inputBamFiles)
 	gsnap = GSNAP
 	(
 		reads    = INPUT(path=bam.file), 
-		options  = "--db=g1k_v37_etv6runx1 --dir=/data_synology/anduril/docker-images/anduril-gsnap_2014_12_28-human_g1k_v37/db/human_g1k_v37 --nthreads 15 --maxsearch=100 --npaths=1 --max-mismatches=1 --novelsplicing=0 --batch=4 --genome-unk-mismatch=0",
+		options  = "--db=g1k_v37_etv6runx1 --dir=/data_synology/anduril/docker-images/anduril-gsnap_2014_12_28-human_g1k_v37/db/human_g1k_v37 --use-splicing=g1k_v37.splicesites --use-snps=g1k_v37.snp138 --nthreads 15 --maxsearch=100 --npaths=1 --max-mismatches=1 --novelsplicing=0 --batch=4 --genome-unk-mismatch=0",
 		docker   = "biowaste:5000/anduril/gsnap",
 		@cpu     = 10, 
 		@memory  = 40000,
-		@name    = "gsnap_" + bam.key 
+		@name    = "gsnap_" + bam.key,
+		@execute = "once" 
 	)
 	alignedBams[bam.key] = gsnap.alignment
 }
@@ -398,6 +399,27 @@ include "goClustering.and"
 include "goEnrichment.and"
 include "expressionHeatmap.and"
 
+ensembl2ucsc = BashEvaluate
+(
+	script = """mysql -h genome-mysql.cse.ucsc.edu -u genome -D hg19 -B -A -e 'select DISTINCT g.name, g.chrom, g.txStart, g.txEnd, eg.name2 as ensembl, 0 as tmp1, g.strand, g.cdsStart, g.cdsEnd, 0 as tmp2, g.exonCount, g.exonStarts, g.exonEnds from knownGene as g, knownCanonical as c, knownToEnsembl as ke, ensGene as eg where g.name=c.transcript and g.name=ke.name and ke.value=eg.name and eg.name2 like "ENSG%";' > @optOut1@""",
+	@execute = "once"
+)
+
+ensembl2ucsc4rseqc = REvaluate
+(
+	table1 = ensembl2ucsc.optOut1,
+	script = StringInput(content=
+		'''
+		table.out <- table1
+		table.out$chrom <- gsub("^chr", "", table.out$chrom)
+		table.out$exonLengths <- apply(table.out, 1, function(x) paste(as.numeric(unlist(strsplit(x["exonEnds"], ",")))-as.numeric(unlist(strsplit(x["exonStarts"], ","))), collapse=","))
+		table.out$exonOffsets <- apply(table.out, 1, function(x) paste(as.numeric(unlist(strsplit(x["exonStarts"], ",")))-as.numeric(x["txStart"]), collapse=","))
+		table.out <- table.out[,!names(table.out) %in% c("name", "exonStarts", "exonEnds")]
+		return(0)
+		'''
+	)
+)		
+
 degTables = record()
 for ID, group : comparisonGroups 
 {	
@@ -467,6 +489,7 @@ for ID, group : comparisonGroups
 		geneAnnot=geneAnnot,
 		direction="up",
 		group=group,
+		groupOrder = "CD19,ER,DS,iAMP",
 		sectionType="subsubsection",
 		@name = "degBoxplotUp_"+ID
 	)
@@ -479,6 +502,7 @@ for ID, group : comparisonGroups
 		geneAnnot=geneAnnot,
 		direction="down",
 		group=group,
+		groupOrder = "CD19,ER,DS,iAMP",
 		sectionType="subsubsection",
 		@name = "degBoxplotDn_"+ID
 	)
@@ -603,6 +627,41 @@ for ID, group : comparisonGroups
 		@name             = "network_"+ID,
 		@enabled          = runFunct
 	)
+	
+	// --- GENE BODY COVERAGE -------------------------------------------------------------------------//
+
+	degCalledUCSC = TableQuery
+	(
+		table1 = degCalledLst[ID],
+		table2 = ensembl2ucsc4rseqc.table,
+		query  = '''SELECT table2.* FROM table1, table2 WHERE table1."ids" = table2."ensembl" AND table1."fc" > 0''',
+		@name  = "degCalledUCSC_" + ID
+	)
+	
+	degGeneBodyCoverage = {}
+	for sample : std.itercsv(group.sampleIdLst)
+	{
+		degGeneBodyCoverage[sample.Sample] = CalcGeneBodyCoverage
+		(
+			bam    = alignedBams[sample.Sample],
+			bed    = degCalledUCSC.table,
+			name   = sample.Sample,
+			docker = "biowaste:5000/anduril/rseqc",
+			@name  = "degGeneBodyCoverage_" + ID + "_" + sample.Sample
+		)
+	}
+	
+	combinedGeneBodyCoverage = CSVJoin(array=degGeneBodyCoverage, useKeys=false, @name="degGeneBodyCoverage_" + ID + "_combined")
+
+	geneBodyCoveragePlot = REvaluate
+	(
+		table1 = combinedGeneBodyCoverage.csv,
+		script = geneBodyCoveragePlotScript,
+		param1 = "Gene body coverage for genes significantly up-regulated in " + ID,
+		param2 = "subsubsection",
+		@name  = "degGeneBodyCoveragePlot_" + ID
+	)
+	
  
 	//--- COMBINE REPORTS -----------------------------------------------------------------------------//
 
@@ -615,7 +674,8 @@ for ID, group : comparisonGroups
 			degBoxplotDn, 
 			exprHeatmap, 
 			goEnrichment,
-			network.report
+			network.report,
+			geneBodyCoveragePlot.document
 		},
 		sectionTitle=ID, 
 		sectionType="subsection"
@@ -958,7 +1018,7 @@ gseaGeneSigDBDn = record()
 gseaTFTargetsUp = record()
 gseaTFTargetsDn = record()
 
-permutations = 5000
+permutations = 100
 
 gseaTableReportGroups = record()
 for ID, group : comparisonGroups 
@@ -986,10 +1046,12 @@ for ID, group : comparisonGroups
 		        "/mnt/projects/generic/data/msigdb5.0/c5.all.v5.0.symbols.gmt," + 
 		        "/mnt/projects/generic/data/msigdb5.0/c6.all.v5.0.symbols.gmt," + 
 		        "/mnt/projects/generic/data/msigdb5.0/c7.all.v5.0.symbols.gmt," + 
-		        "/mnt/projects/generic/data/msigdb5.0/h.all.v5.0.symbols.gmt," + 
+		        "/mnt/projects/generic/data/msigdb5.0/h.all.v5.0.symbols.gmt," +
+		        "/mnt/projects/generic/data/laurenti_2013_hematopoietic_lineages.gmt," + 
 		        "/mnt/projects/iamp/results/gsea/custom/mir_target_genesets.gmx",
-		options = "-nperm " + permutations + " -set_max 500 -set_min 10",
-		@memory  = 5000,	
+		options = "-nperm " + permutations + " -set_max 1000 -set_min 5",
+		@memory  = 7000,
+		@cpu     = 2, 			
 		@name = "gseaMSigDB_" + ID,
 		@enabled = runGseaMSigDB
 	)
@@ -1005,7 +1067,8 @@ for ID, group : comparisonGroups
 		label = ID,
 		gmt   = "/mnt/projects/generic/data/GeneSigDB/ALL_SIGSv4.nodup.gmt",
 		options = "-nperm " + permutations + " -set_max 1000 -set_min 5",
-		@memory  = 5000,	
+		@memory  = 7000,
+		@cpu     = 2, 			
 		@name = "gseaGeneSigDB_" + ID,
 		@enabled = runGseaGeneSigDB
 	)
@@ -1021,7 +1084,8 @@ for ID, group : comparisonGroups
 		label = ID,
 		gmt   = "/mnt/projects/generic/data/DSigDB/DSigDB_v1.0_All.nodup.gmt",
 		options = "-nperm " + permutations + " -set_max 1000 -set_min 3",
-		@memory  = 5000,	
+		@memory  = 7000,
+		@cpu     = 2, 			
 		@name = "gseaDSigDB_" + ID,
 		@enabled = runGseaDSigDB
 	)
@@ -1044,7 +1108,8 @@ for ID, group : comparisonGroups
 		        "/mnt/projects/generic/data/msigdb5.0/c3.tft.v5.0.symbols.gmt," +
 		        "/mnt/projects/generic/data/opossum3/jaspar_core.gmt",
 		options = "-nperm " + permutations + " -set_max 5000 -set_min 3",
-		@memory  = 5000,	
+		@memory  = 7000,
+		@cpu     = 2, 			
 		@name = "gseaTFTargets_" + ID,
 		@enabled = runGseaTFTargets
 	)
@@ -1064,7 +1129,17 @@ gseaReportMSigDB = getGSEAReportMSigDB
 	enrichedDn = gseaMSigDBDn,
 	tableReportGroups = gseaTableReportGroups,
 	minSetSize        = 10,
-	maxSetSize        = 500,
+	maxSetSize        = 1000,
+	@enabled = runGseaMSigDB
+)
+
+gseaReportHematologic = getGSEAReportHematologic
+(
+	enrichedUp = gseaMSigDBUp,
+	enrichedDn = gseaMSigDBDn,
+	tableReportGroups = gseaTableReportGroups,
+	minSetSize        = 10,
+	maxSetSize        = 1000,
 	@enabled = runGseaMSigDB
 )
 
@@ -1125,6 +1200,7 @@ gseaReportOverlap = getGSEAOverlapReport
 								iAMPvsERUp      = 1e-4,	iAMPvsERDn      = 1e-2,
 								ERvsDSUp        = 1e-2,	ERvsDSDn        = 1e-6
 							),
+	maxRank = 500,
 	@enabled = runGseaMSigDB || runGseaGeneSigDB || runGseaDSigDB || runGseaTFTargets
 )
 
@@ -1132,6 +1208,7 @@ combinedReportGsea = LatexCombiner
 (
 	array = {
 		gseaReportMSigDB,
+		gseaReportHematologic,
 		gseaReportGeneSigDB,
 		gseaReportTFTargets,
 		gseaReportDSigDB,

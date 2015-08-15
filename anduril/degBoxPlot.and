@@ -7,7 +7,9 @@ function getDEGBoxPlots
 	CSV geneAnnot,
 	string direction,
 	record group,
-	string sectionType
+	string sectionType,
+	string groupOrder = "",
+	boolean labelOutliers = true
 ) -> (Latex report)
 {
 	// which direction?
@@ -29,12 +31,12 @@ function getDEGBoxPlots
 	(
   		expr   = exprMatrix,
 		groups = sampleGroupsSimple,
-		groupOrder = "CD19,ER,DS,iAMP",
+		groupOrder = groupOrder,
 		annotation = geneAnnot,
 		geneIds = degsFiltered,
 		nRow = 4,
 		nCol = 7,
-		labelOutliers=true,
+		labelOutliers=labelOutliers,
 		cexSampleLabel=0.3,
 		caption = caption,
 		sectionTitle=sectionTitle, 

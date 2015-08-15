@@ -17,7 +17,7 @@ function getGSEAReportMSigDB
 	title = "MSigDB 5.0 pathway gene sets"
 	description = "Gene sets in this category represent canonical representations of a biological process compiled by domain experts. Pathway source databases include KEGG, REACTOME, BIOCARTA, and PID."
 	fdr = 0.001
-	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="MSIGDB_C2_PATHWAYS" & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+	filter = StringInput(content='''table.out <- table1[grepl("MSIGDB_C2_PATHWAYS", table1$CATEGORY) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
 
 	heatmap = GSEAHeatmap
 	(
@@ -135,7 +135,7 @@ function getGSEAReportMSigDB
 	title = "MSigDB 5.0 positional gene sets"
 	description = "Gene sets corresponding to each human chromosome and each cytogenetic band that has at least one gene."
 	fdr = 0.001
-	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="MSIGDB_C1_POSITIONAL" & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+	filter = StringInput(content='''table.out <- table1[grepl("MSIGDB_C1_POSITIONAL", table1$CATEGORY) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
 
 	heatmap = GSEAHeatmap
 	(
@@ -194,7 +194,7 @@ function getGSEAReportMSigDB
 	title = "MSigDB 5.0 miRNA targets"
 	description = "Sets of genes that share a 3'-UTR microRNA binding motif."
 	fdr = 0.05
-	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="MSIGDB_C3_MOTIF_MIR" & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+	filter = StringInput(content='''table.out <- table1[grepl("MSIGDB_C3_MOTIF_MIR", table1$CATEGORY) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
 
 	heatmap = GSEAHeatmap
 	(
@@ -370,7 +370,7 @@ function getGSEAReportMSigDB
 			      "representing genes induced (repressed) by the perturbation. The MSigDB gene set page for each gene set lists the PubMed citation on which it is based."
 	fdr = 0.001
 	nes = 2.5
-	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="MSIGDB_C2_CGP" & grepl("(_UP|_DN)$", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdr + ''' & table1$NES >= '''+nes+''',]''', @name="filter"+category)
+	filter = StringInput(content='''table.out <- table1[grepl("MSIGDB_C2_CGP", table1$CATEGORY) & grepl("(_UP|_DN)$", table1$NAME, perl=T) & table1$'FDR q-val' <= ''' + fdr + ''' & table1$NES >= '''+nes+''',]''', @name="filter"+category)
 
 	heatmap = GSEAHeatmap
 	(
@@ -486,6 +486,87 @@ function getGSEAReportMSigDB
 	(
 		array = reports,
 		sectionTitle = "GSEA MSigDB 5.0",
+		sectionType = "section"
+	)
+	
+	return reportFinal
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------
+
+function getGSEAReportHematologic
+(
+	record enrichedUp,
+	record enrichedDn,
+	record tableReportGroups,
+	int    minSetSize,
+	int    maxSetSize
+) -> (Latex report)
+{
+	reports = record()
+	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\n$ID$\tLINKOUT\tNAME")
+
+	category = "Hematologic"
+	title = "Hematologic gene sets"
+	description = "Enrichment of DEGs in hematologic gene sets extracted from MSigDB 5.0 (immunologic signatures, collection C7) and gene sets manually curated from the literature (e.g. Laurenti et al., 2013)."
+	fdr = 0.05
+	filter = StringInput(content='''table.out <- table1[grepl("HEMATOLOGIC", table1$CATEGORY) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+
+	heatmap = GSEAHeatmap
+	(
+		title = title,
+		caption = title + ".",
+		enrichedUp = enrichedUp,
+		enrichedDown = enrichedDn,
+		sectionTitle = "Graphical overview",
+		sectionType = "subsection",
+		sigCutoff = fdr,
+		hsigCutoff = 1e-3,
+		regexCategoryNames = "HEMATOLOGIC",
+//		RFilterExpr = "FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr,
+		RFilterExpr = "FDR.q.val.TumorVsNormal <= "+fdr+" | FDR.q.val.iAMPvsNoniAMP <= "+fdr+" | FDR.q.val.iAMPspecific <= "+fdr+" | FDR.q.val.DSvsNonDS <= "+fdr+" | FDR.q.val.ERvsNonER <= "+fdr+" | FDR.q.val.iAMPvsDS <= "+fdr+" | FDR.q.val.iAMPvsER <= "+fdr+" | FDR.q.val.ERvsDS <= "+fdr,
+		cexRow = 0.7,
+		pdfWidth = 10,
+		pdfHeight = 15,
+		figureHeight = 24,
+		@name = "heatmap"+category
+	)
+	
+	tableReps = tableReports
+	(
+		enrichedUp = enrichedUp,	
+		enrichedDn = enrichedDn,
+		title = title,
+		filterScript = filter,
+		reportGroups = tableReportGroups,
+		hyperlinkRule = hyperlinkRule,
+		fdr = fdr,
+		minSetSize = minSetSize,
+		maxSetSize = maxSetSize,
+		sectionType = "subsection",
+		@name = "tableReports"+category
+	)
+
+	heatmapWithHeader = LatexCombiner
+	(
+		head = description,
+		latex1 = heatmap,
+		@name = "heatmapHeader"+category
+	)
+	
+	reports[category] = LatexCombiner
+	(
+		latex1 = heatmapWithHeader,
+		array = tableReps,
+		sectionTitle = "",
+		sectionType = "",
+		@name = "report"+category
+	)
+	
+	reportFinal = LatexCombiner
+	(
+		array = reports,
+		sectionTitle = "GSEA Hematologic",
 		sectionType = "section"
 	)
 	
@@ -678,7 +759,7 @@ function getGSEAReportDSigDB
 	title = "FDA Approved Drug Gene Sets"
 	description = "DSigDB 1.0 FDA Approved Drug Gene Sets (http://tanlab.ucdenver.edu/DSigDB/DSigDBv1.0/browser.py?db=d1)"
 	fdr = 0.1
-	filter = StringInput(content='''table.out <- table1[table1$CATEGORY=="DSIGDB_D1_FDA" & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
+	filter = StringInput(content='''table.out <- table1[grepl("DSIGDB_D1_FDA", table1$CATEGORY) & table1$'FDR q-val' <= ''' + fdr + ''',]''', @name="filter"+category)
 
 	heatmap = GSEAHeatmap
 	(
@@ -938,7 +1019,8 @@ function getGSEAOverlapReport
 	record enrichedTFTargetsDn,
 	record groups,
 	record similarityCutoffsTree,
-	record sigCutoffs
+	record sigCutoffs,
+	int    maxRank
 ) -> (Latex report)
 {
 	hyperlinkRule = StringInput(content="URL\trefCol\tvalueCol\n$ID$\tlinkout1\tset1\n$ID$\tlinkout2\tset2")
@@ -1000,7 +1082,7 @@ function getGSEAOverlapReport
 			dropMissing  = false,
 			listCols     = "",
 			rename       = "set1=Name 1,set2=Name 2,size1=Size 1,size2=Size 2,jacc=Overlap,shared_core_genes=Shared core enrichment genes (rank)",
-			numberFormat = "jacc=#0.0",
+			numberFormat = "jacc=#0.00",
 			pageBreak    = false,
 			section      = "Overlap table " + ID + " Up",
 			sectionType  = "subsubsection",
@@ -1009,10 +1091,37 @@ function getGSEAOverlapReport
 			@name        = "table"+ID+"Up"
 		)
 		
+		geneFreqContent = TableQuery
+		(
+			table1 = overlap.coreGeneFrequency @require,
+			query  = '''SELECT * FROM table1 WHERE "freq" >= 2 AND "rank" <= ''' + maxRank + ''' LIMIT 100''',
+			@name  = "geneFreqContent_"+ID+"Up"
+		)
+
+		geneFreqTable = CSV2Latex
+		(
+			tabledata    = geneFreqContent.table,
+			attach       = false,
+			caption      = "Top-100 most frequent core enrichment genes present in gene sets significantly enriched (FDR equal or lower " + sigCutoff + ") for genes up-regulated between " + group.caseG + " and " + group.controlG + ". " +
+			               "To focus on genes with higher differential expression, genes with expression ranks above " + maxRank + " were excluded. ",
+			columns      = "gene,rank,freq,gene_sets(FDR)",
+			colFormat    = "lccp{14cm}",
+			countRows    = true,
+			dropMissing  = false,
+			listCols     = "",
+			rename       = "gene=Gene,rank=Rank,freq=Freq.,gene_sets(FDR)=Present in gene sets (enrichment FDR)",
+			pageBreak    = false,
+			section      = "Core enrichment genes " + ID + " Up",
+			sectionType  = "subsubsection",
+			skipEmpty    = true,
+			@name        = "geneFreqTable"+ID+"Up"
+		)
+		
 		reports[ID+"Up"] = LatexCombiner
 		(
 			latex1 = overlap.dendrogram,
 			latex2 = table,
+			latex3 = geneFreqTable,
 			sectionTitle = ID + " UP",
 			sectionType = "subsection",
 			@name = "report"+ID+"Up"
@@ -1065,7 +1174,7 @@ function getGSEAOverlapReport
 			dropMissing  = false,
 			listCols     = "",
 			rename       = "set1=Name 1,set2=Name 2,size1=Size 1,size2=Size 2,jacc=Overlap,shared_core_genes=Shared core enrichment genes (rank)",
-			numberFormat = "jacc=#0.0",
+			numberFormat = "jacc=#0.00",
 			pageBreak    = false,
 			section      = "Overlap table " + ID + " Down",
 			sectionType  = "subsubsection",
@@ -1073,21 +1182,115 @@ function getGSEAOverlapReport
 			refs         = hyperlinkRule,
 			@name        = "table"+ID+"Dn"
 		)
+
+		geneFreqContent = TableQuery
+		(
+			table1 = overlap.coreGeneFrequency @require,
+			query  = '''SELECT * FROM table1 WHERE "freq" >= 2 AND "rank" <= ''' + maxRank + ''' LIMIT 100''',
+			@name  = "geneFreqContent_"+ID+"Dn"
+		)
+
+		geneFreqTable = CSV2Latex
+		(
+			tabledata    = geneFreqContent.table,
+			attach       = false,
+			caption      = "Top-100 most frequent core enrichment genes present in gene sets significantly enriched (FDR equal or lower " + sigCutoff + ") for genes down-regulated between " + group.caseG + " and " + group.controlG + ". " +
+			               "To focus on genes with higher differential expression, genes with expression ranks above " + maxRank + " were excluded. ",
+			columns      = "gene,rank,freq,gene_sets(FDR)",
+			colFormat    = "lccp{14cm}",
+			countRows    = true,
+			dropMissing  = false,
+			listCols     = "",
+			rename       = "gene=Gene,rank=Rank,freq=Freq.,gene_sets(FDR)=Present in gene sets (enrichment FDR)",
+			pageBreak    = false,
+			section      = "Core enrichment genes " + ID + " Down",
+			sectionType  = "subsubsection",
+			skipEmpty    = true,
+			@name        = "geneFreqTable"+ID+"Dn"
+		)
 		
 		reports[ID+"Dn"] = LatexCombiner
 		(
 			latex1 = overlap.dendrogram,
 			latex2 = table,
+			latex3 = geneFreqTable,
 			sectionTitle = ID + " DN",
 			sectionType = "subsection",
 			@name = "report"+ID+"Dn"
 		)
 	}
 	
+	// --- custom overlap reports --------------------------------------------------------------------------------------------
+	
+	ID = "iAMPspecific"
+	group = groups[ID]
+	similarityCutoffTree = 0.05
+	similarityCutoffTable = 0.05
+	sigCutoff = 0.1
+	hsigCutoff = 0.01
+	
+	overlap = GSEAOverlap
+	(
+		enrichedGeneSets = record(MSigDB=enrichedMSigDBUp[ID]),
+		caption = "Similarity among hematologic gene sets enriched (FDR equal or lower " + sigCutoff + ") for genes up-regulated in " + group.caseG + " compared to " + group.controlG + ". " +
+				  "The Jaccard index is used to measure similarity and reflects the amount of core enrichment genes shared between two gene sets. " +
+				  "Clustering performed by average-linkage hierarchical clustering. " +
+				  "Gene sets with limited overlap (Jaccard index below " + similarityCutoffTree + ") were removed from the tree. " +
+				  "Highly enriched gene sets (FDR equal or below " + hsigCutoff + ") colored in red. " +
+				  "Core enrichment genes shared among depicted gene sets are listed in the table below.",
+		similarityCutoffTree=similarityCutoffTree,
+		similarityCutoffTable=similarityCutoffTable,
+		regexCategoryNames="HEMATOLOGIC",
+		sigCutoff=sigCutoff,
+		hsigCutoff=hsigCutoff,
+		sectionTitle = "Overlap dendrogram hematologic " + ID + " Up",
+		sectionType  = "subsubsection",
+		@name = "dendrogram"+ID+"UpHematologic"
+	)
+
+	content = REvaluate
+	(
+		table1 = overlap.overlaps,
+		script = overlapTableConvertScript,
+		@name = "content"+ID+"UpHematologic"
+	)
+		
+	table = CSV2Latex
+	(
+		tabledata    = content.table,
+		attach       = false,
+		caption      = "Enriched (FDR equal or lower " + sigCutoff + ") hematologic gene sets sharing genes up-regulated in " + group.caseG + " compared to " + group.controlG + ". " +
+		               "Gene set pairs with limited overlap (Jaccard index below " + similarityCutoffTable + ") not shown.",
+		columns      = "set1,set2,size1,size2,jacc,shared_core_genes",
+		colFormat    = "p{1.5cm}p{1.5cm}cccp{10.5cm}",
+		countRows    = true,
+		dropMissing  = false,
+		listCols     = "",
+		rename       = "set1=Name 1,set2=Name 2,size1=Size 1,size2=Size 2,jacc=Overlap,shared_core_genes=Shared core enrichment genes (rank)",
+		numberFormat = "jacc=#0.0",
+		pageBreak    = false,
+		section      = "Overlap table hematologic " + ID + " Up",
+		sectionType  = "subsubsection",
+		skipEmpty    = true,
+		refs         = hyperlinkRule,
+		@name        = "table"+ID+"UpHematologic"
+	)
+		
+	reports[ID+"UpHematologic"] = LatexCombiner
+	(
+		latex1 = overlap.dendrogram,
+		latex2 = table,
+		sectionTitle = ID + " Hematologic UP",
+		sectionType = "subsection",
+		@name = "report"+ID+"UpHematologic"
+	)
+	
+	// ---------------------
+	
 	reportFinal = LatexCombiner
 	(
 		array = reports,
-		sectionTitle = "GSEA Overlaps",
+		sectionTitle = "Gene Set Overlap Analysis",
 		sectionType = "section"
 	)
 	

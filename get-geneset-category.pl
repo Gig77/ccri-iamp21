@@ -25,7 +25,9 @@ close(IN);
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c2.cgp.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C2_CGP\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
+	my $cat = "MSIGDB_C2_CGP";
+	$cat .= ",HEMATOLOGIC" if ($gs =~ /(MULLIGHAN_MLL_SIGNATURE|HEMATOP)/);
+	print OUT uc($gs),"\t$cat\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
@@ -95,7 +97,9 @@ close(IN);
 open(IN, "/mnt/projects/generic/data/msigdb5.0/c7.all.v5.0.symbols.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
-	print OUT uc($gs),"\tMSIGDB_C7_IMMUNOLOGIC_SIGNATURES\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
+	my $cat = "MSIGDB_C7_IMMUNOLOGIC_SIGNATURES";
+	$cat .= ",HEMATOLOGIC" if ($gs =~ /(BCELL_VS|VS_BCELL|TCELL_VS|VS_TCELL|NEUTROPHIL_VS|VS_MONOCYTE|_DC_VS)/ and $gs !~ /LUPUS|_FLU_|CD4_TCELL|CD8_TCELL|GONDII|IGG_IGA|DONOVANI|_STIM_|_MALAYI_/);
+	print OUT uc($gs),"\t$cat\t\thttp://www.broadinstitute.org/gsea/msigdb/cards/$gs.html\n";
 }
 close(IN);
 
@@ -185,6 +189,7 @@ close(IN);
 
 # GeneSigDB 4.0
 
+my %id2title;
 open(IN, "/mnt/projects/generic/data/GeneSigDB/ALL_SIGSv4.nodup.gmt") or die "ERROR: Could not read input.\n";
 while (<IN>) {
 	my ($gs) = split /\t/;
@@ -205,24 +210,28 @@ while (<IN>) {
 	close(F);
 	
 	# fetch paper title
-	my $title;
-	print "Fetching pubmed ID $pmid... ";
-	open(W, "curl -s \"http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=$pmid&rettype=medline\"|") or die "ERROR curl: $!\n";
-	while(<W>) {
-		chomp;
-		my ($key, $value) = /(\S+)\s*?-\s+(.*)/;
-		if (!$key and $title) {
-			my ($nline) = /^\s*(.*)/;			
-			$title .= $nline;
-		} elsif ($title) {
-			last;
-		} elsif ($key and $key eq "TI") {
-			$title = $value;
+	my $title = "";
+	if (!defined $id2title{$pmid}) {
+		print "Fetching pubmed ID $pmid... ";
+		open(W, "curl -s \"http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=$pmid&rettype=medline\"|") or die "ERROR curl: $!\n";
+		while(<W>) {
+			chomp;
+			my ($key, $value) = /(\S+)\s*?-\s+(.*)/;
+			if (!$key and $title) {
+				my ($nline) = /^\s*(.*)/;			
+				$title .= $nline;
+			} elsif ($title) {
+				last;
+			} elsif ($key and $key eq "TI") {
+				$title = $value;
+			}
 		}
+		close(W);		
+		print "$title\n";
+		$id2title{$pmid} = $title;
+	} else {
+		$title = $id2title{$pmid};
 	}
-	close(W);
-	print "$title\n";
-
 	
 	print OUT uc($gs),"\tGeneSigDB\t$title $desc\thttp://compbio.dfci.harvard.edu/genesigdb/signaturedetail.jsp?signatureId=$gs\n";
 }
@@ -249,6 +258,18 @@ close(IN);
 #	print OUT uc($gs),"\tPAZAR\t\t$url\n";
 #}
 #close(IN);
+
+# Laurenti et al. (2013)
+# http://www.nature.com.ez.srv.meduniwien.ac.at/ni/journal/v14/n7/full/ni.2615.html
+
+open(IN, "/mnt/projects/generic/data/laurenti_2013_hematopoietic_lineages.gmt") or die "ERROR: Could not read input.\n";
+while (<IN>) {
+	my ($gs, $url) = split /\t/;
+	next if (!$gs);
+	$url = "http://www.ncbi.nlm.nih.gov/pubmed/23708252";
+	print OUT uc($gs),"\tHEMATOLOGIC\t\t$url\n";
+}
+close(IN);
 
 close(OUT);
 

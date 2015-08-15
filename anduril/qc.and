@@ -1,50 +1,11 @@
-/** Prepares some quality control plots for the given BAM files and expression matrix. */
-function getQCReport
-(
-	GTF              	gtf,
-	Matrix           	expr,
-	Array<TextFile>		counts,
-	SampleGroupTable 	groups,
-	record		 	 	alignedBAMs,
-	string           	title = "Quality Control"
-) -> (Latex report)
-{
-
-	// determine number of reads per sample and category
-	readStats = RNASeqReadStats
-	(
-		alignedBAMs = alignedBAMs, 
-		gtf         = gtf
-	)
-	
-	// create bar chart with read numbers
-	readStatsChart = RNASeqReadStatsBarChart
-	(
-		stats = readStats
-	)
-	
-	// gene body coverage
-	geneBodyCoverage = {}
-	for sample, bam : alignedBAMs 
-	{
-		geneBodyCoverage[sample] = CalcGeneBodyCoverage
-		(
-			bam = bam,
-			name = sample, 
-			docker = "biowaste:5000/anduril/rseqc",
-			@name="geneBodyCoverage_"+sample
-		)
-	}
-	
-	combinedCoverage = CSVJoin(array=geneBodyCoverage, useKeys=false)
-
-	geneBodyCoveragePlot = REvaluate
-	(
-		table1 = combinedCoverage.csv,
-		script = StringInput(content=
+geneBodyCoveragePlotScript = StringInput(content=
 			'''
+			instance.name <- get.metadata(cf, 'instanceName')	
 			cov <- Matrix.read(get.input(cf, 'table1'))
 			document.dir <- get.output(cf, 'document')
+			section.title <- get.parameter(cf, 'param1', type = 'string')
+			section.type <- get.parameter(cf, 'param2', type = 'string')
+			
 			
 			# for debugging
 			#save(list=ls(), file="/mnt/synology/data/christian/temp/dump.rda")
@@ -57,7 +18,7 @@ function getQCReport
 			rownames(cov.norm) <- unlist(lapply(strsplit(rownames(cov.norm), '\\.'), "[[", 1))
 			
 			# curves
-			plot.curve <- "coverageCurve.pdf"
+			plot.curve <- sprintf('coverageCurve_%s.pdf', instance.name)
 			pdf(file.path(document.dir, plot.curve))
 			x=1:100
 			icolor = colorRampPalette(c("#7fc97f","#beaed4","#fdc086","#ffff99","#386cb0","#f0027f"))(nrow(cov.norm))			
@@ -68,8 +29,7 @@ function getQCReport
 			#legend(0,1,fill=icolor[1:nrow(cov.norm)], legend=rownames(cov.norm))
 			dev.off()
 			
-			plot.heatmap <- "coverageHetmap.pdf"
-			
+			plot.heatmap <- sprintf('coverageHeatmap_%s.pdf', instance.name)
 			pdf(file.path(document.dir, plot.heatmap))
 
 			rc <- cm.colors(ncol(cov.norm))
@@ -84,7 +44,12 @@ function getQCReport
 			# prepare latex document
 			tex <- character()
 			tex <- c(tex, '\\clearpage')
-			tex <- c(tex, '\\subsection{Gene body coverage}\\label{GeneBodyCoverage}')
+			if (nchar(section.type) > 0) {
+	  			section.type=paste('\\',section.type,sep='') # if section type is defined, add escape in the beginning
+			}
+			if (nchar(section.title) > 0) {
+	  			tex <- c(tex, sprintf('%s{%s}\\label{%s}', section.type, section.title,	instance.name))
+			}			
 			tex <- c(tex, latex.figure(plot.curve, image.height=16, caption="Gene body coverage 5' to 3. The more uniform the distribution the better. Distributions heavily skewed to 5' or 3' usually indicate low quality of input RNA."))		    			    
 			tex <- c(tex, latex.figure(plot.heatmap, image.height=16, caption="Heatmap of gene body coverage from 5' to 3'. Darker colors indicate higher coverage. Samples (rows) with similar coverage distribution are clustered together. These clusters should not correspond to biological subgroups of interest to exclude batch effects."))		    			    
 
@@ -93,7 +58,59 @@ function getQCReport
 			
 			return(0)
 			'''
+)
+/** Prepares some quality control plots for the given BAM files and expression matrix. */
+function getQCReport
+(
+	GTF              	gtf,
+	Matrix           	expr,
+	Array<TextFile>		counts,
+	SampleGroupTable 	groups,
+	record		 	 	alignedBAMs,
+	string           	title = "Quality Control",
+	string              genome = "human/hg19",
+	int					readStatsSamplesPerRow = 8,
+	int                 readStatsYMax = 40
+) -> (Latex report)
+{
+
+	// determine number of reads per sample and category
+	readStats = RNASeqReadStats
+	(
+		alignedBAMs = alignedBAMs, 
+		gtf         = gtf
+	)
+	
+	// create bar chart with read numbers
+	readStatsChart = RNASeqReadStatsBarChart
+	(
+		stats = readStats,
+		samplesPerRow = readStatsSamplesPerRow,
+		yMax          = readStatsYMax
+	)
+	
+	// gene body coverage
+	geneBodyCoverage = {}
+	for sample, bam : alignedBAMs 
+	{
+		geneBodyCoverage[sample] = CalcGeneBodyCoverage
+		(
+			bam = bam,
+			name = sample,
+			genome = genome, 
+			docker = "biowaste:5000/anduril/rseqc",
+			@name="geneBodyCoverage_"+sample
 		)
+	}
+	
+	combinedCoverage = CSVJoin(array=geneBodyCoverage, useKeys=false)
+
+	geneBodyCoveragePlot = REvaluate
+	(
+		table1 = combinedCoverage.csv,
+		param1 = "Gene body coverage of 'house keeping' genes",
+		param2 = "subsection",
+		script = geneBodyCoveragePlotScript
 	)
 	
     cumsum = Plot2D
@@ -188,9 +205,9 @@ function RNASeqReadStats
 ) -> (CSV readStats)
 {
 	// convert GTF file to set of BED files for read counting
-	bedAllExons = BashEvaluate(var1 = gtf, script='''zcat @var1@ | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\t.*?\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
-	bedProteinCoding = BashEvaluate(var1 = gtf, script='''zcat @var1@ | perl -ne 'print "$1\t$3\t$4\t$5\n" if (/^(.*?)\t(protein_coding)\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
-	bedrRNA = BashEvaluate(var1 = gtf, script='''zcat @var1@ | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\trRNA\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	bedAllExons = BashEvaluate(var1 = gtf, script='''zcat -f @var1@ | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\t.*?\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	bedProteinCoding = BashEvaluate(var1 = gtf, script='''zcat -f @var1@ | grep 'gene_biotype "protein_coding"' | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\t.*?\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
+	bedrRNA = BashEvaluate(var1 = gtf, script='''zcat -f @var1@ | grep -P 'gene_biotype "(rRNA|Mt_rRNA)"' | perl -ne 'print "$1\t$2\t$3\t$4\n" if (/^(.*?)\t.*?\texon\t(.*?)\t(.*?)\t.*gene_name \"(.*?)\"/)' > @optOut1@''')
 	
 	bedArray = ArrayConstructor
 	(
@@ -235,7 +252,7 @@ function RNASeqReadStats
 		    	echo -e "sample\ttotal\tpass-filter\tmapped\texonic\tnon-rRNA\tprotein\tuniquely mapped\tnon-duplicates" > @optOut1@
 		    	echo -e "@param1@\t$countTotal\t$countPassFilter\t$countMapped\t$countAllExons\t$countNonrRNA\t$countProteinCoding\t$countUnique\t$countNonDup" >> @optOut1@
 		    	''',
-		    @cpu=3,        // IO intensive job; limit slurm over-allocation by artificially increasing requested CPUs 
+		    @cpu=5,        // IO intensive job; limit slurm over-allocation by artificially increasing requested CPUs 
 		    @name=sample
 		) 
 		counts[sample] = count.optOut1

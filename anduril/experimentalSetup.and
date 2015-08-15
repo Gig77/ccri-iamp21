@@ -1,10 +1,27 @@
 function experimentalSetupReport
 (
 	SampleGroupTable sampleGroups,
-	SampleGroupTable comparisons
+	SampleGroupTable comparisons,
+	optional CSV	 samples,
+	string           sampleTableColumns = "",
+	string           sampleTableFormat = ""
 ) -> (Latex report)
 {
-	samplesReport = ExperimentSetup
+	samplesReport = CSV2Latex
+	(
+		tabledata    = samples,
+		columns      = sampleTableColumns,
+		colFormat    = sampleTableFormat,
+		caption      = "List of samples.",
+		countRows    = true,
+		skipEmpty    = true,
+		sectionType  = "subsection",
+		section      = "Samples",
+		evenColor    = "1,1,1",
+		@enabled     = sampleTableColumns != ""
+	)
+
+	sampleGroupsReport = ExperimentSetup
 	(
 		force groups = sampleGroups,
 		definWidth   = 10.0,
@@ -24,7 +41,7 @@ function experimentalSetupReport
 	
 	samplesGraph = GraphVisualizer
 	(
-		samplesReport.graph,
+		sampleGroupsReport.graph,
 		reportHeight = 26,
 		reportWidth  = 18,
 		layout       = "spring2",
@@ -43,6 +60,7 @@ function experimentalSetupReport
 	combinedReport = LatexCombiner
 	(
 		samplesReport.report,
+		sampleGroupsReport.report,
 		comparisonsReport.report,
 		samplesGraph.figure,
 		comparisonsGraph.figure,
