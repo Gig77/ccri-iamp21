@@ -9,7 +9,9 @@ function getDEGBoxPlots
 	record group,
 	string sectionType,
 	string groupOrder = "",
-	boolean labelOutliers = true
+	boolean labelOutliers = true,
+	float cexGroupLabel = 1,
+	float height = 7
 ) -> (Latex report)
 {
 	// which direction?
@@ -34,10 +36,12 @@ function getDEGBoxPlots
 		groupOrder = groupOrder,
 		annotation = geneAnnot,
 		geneIds = degsFiltered,
+		height = height,
 		nRow = 4,
 		nCol = 7,
 		labelOutliers=labelOutliers,
 		cexSampleLabel=0.3,
+		cexGroupLabel=cexGroupLabel,
 		caption = caption,
 		sectionTitle=sectionTitle, 
 		sectionType=sectionType

@@ -3,6 +3,7 @@ refsGOEnrich = XrefLinkRule(moksiskaan = moksiskaanInit.connection, columns = "G
 function getGOEnrichmentReport
 (
 	CSV    geneIds,	
+	CSV    deseq,
 	CSV    geneNames,
 	CSV    geneGO,
 	float  threshold,
@@ -11,6 +12,19 @@ function getGOEnrichmentReport
 	string sectionType
 ) -> (Latex report)
 {
+	// compute GO probabilities for background gene set limited to only expressed genes (i.e. genes for which we have a p-value)
+	goAnnotationsExpressed = TableQuery
+	(
+		tables = record(deseq=deseq, geneGO=geneGO),
+		query  = '''
+			SELECT geneGO.*
+			FROM   geneGO, deseq
+			WHERE  geneGO."xref10" = deseq."ids" AND deseq."q''' + ID + '''" IS NOT NULL
+		'''
+	)
+	
+	enrichmentTableExpressed = GOProbabilityTable(goAnnotation=goAnnotationsExpressed)
+	
 	// get input genes annotated with GO terms
 	goAnnotations = TableQuery
 	(
@@ -28,7 +42,7 @@ function getGOEnrichmentReport
 	goEnrich = GOEnrichment
 	(
 		goAnnotations	       = goAnnotations,
-		enrichmentTable 	   = enrichmentTable,
+		enrichmentTable 	   = enrichmentTableExpressed.enrichmentTable,
 		colorMinP              = 0,
 		filterFDR              = true,
 		includeGraphAttributes = true,
@@ -52,14 +66,15 @@ function getGOEnrichmentReport
 		query = 
 			'''
 			SELECT T1."GOID", 
-				   T1."Proportion", 
-				   T1."PValueCorrected" AS "pValueAdj", 
+				   T1."Priori"          AS "pBG",
+				   T1."Proportion"      AS "pDEG", 
+				   T1."PValueCorrected" AS "pAdj", 
 				   T1."Ontology", 
 				   T1."Description", 
 				   GROUP_CONCAT('\textcolor' || CASEWHEN(T3."fc">0, '{red}{', '{blue}{') || IFNULL(T2."Gene", T1."IDs") || '}' SEPARATOR ',') AS "Genes"
 			FROM   table1 AS T1, table2 AS T2, table3 as T3
 			WHERE  (T1."IDs" = T2."Ensembl" and T1."IDs" = T3."ids")
-			GROUP  BY T1."GOID", T1."Proportion", T1."Ontology", T1."Description", T1."PValueCorrected"
+			GROUP  BY T1."GOID", T1."Priori", T1."Proportion", T1."Ontology", T1."Description", T1."PValueCorrected"
 			ORDER  BY T1."PValueCorrected", T1."Description"
 			'''
 	)
@@ -69,14 +84,14 @@ function getGOEnrichmentReport
 		goTable, 
 		refsGOEnrich,
 		caption      = "Enriched gene ontology (GO) terms~\\cite{Ashburner2000} (FDR corrected $p\\le"+threshold+"$) comparing " + ID + ". "+
-					   "Ratio is the proportion of genes annotated with that GO term among all significant differentially regulated genes. "+
+					   "'pBG' and 'pDEG' is the fraction of genes annotated with that GO term among all expressed genes and differentially expressed genes, respectively. "+
 					   "List sorted by FDR corrected p-values. "+
 					   "Red and blue colors refer to \\textcolor{red}{up}- and \\textcolor{blue}{down}-regulated genes, respectively.",
-		columns      = "Proportion,pValueAdj,Ontology,Description,Genes",
-		rename       = "Proportion=Ratio,Ontology=Type",
+		columns      = "pBG,pDEG,pAdj,Ontology,Description,Genes",
+		rename       = "Ontology=Type",
 		listCols     = "Genes",
-		colFormat    = "p{1.0cm}@{}ccp{3.5cm}p{10.5cm}",
-		numberFormat = "Proportion=#0.000,pValueAdj=#0.0E00,Genes=RAW_LATEX",
+		colFormat    = "ccccp{3.5cm}p{9.5cm}",
+		numberFormat = "pBG=#0.00,pDEG=#0.00,pAdj=#0.0E00,Genes=RAW_LATEX",
 		countRows    = true,
 		skipEmpty    = true,
 		sectionType  = sectionType,

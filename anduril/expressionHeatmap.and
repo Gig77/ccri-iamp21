@@ -1,9 +1,10 @@
-function getHeatmapReport
+function heatmapReportNotEmpty
 (
   	Matrix exprMatrix,
   	CSV geneNames,
 	record group,
-	string sectionType
+	string sectionType,
+	float cexRow = 0.3
 ) -> (Latex report)
 {
 	groupExprG = IDConvert
@@ -37,14 +38,14 @@ function getHeatmapReport
 	(
 		force matr     = groupExprGCorr.table,
 		caption        = "Heatmap of DEGs between "+group.caseG+" and "+group.controlG+".",
-		cexCol         = 1.0,
-		cexRow         = 0.1,
+		cexCol         = 1,
+		cexRow         = cexRow,
 		clusterMethod  = "average",
 		distanceMetric = "pcc",
 		drawColnames   = true,
 		drawLegends    = true,
 		drawRownames   = true,
-		marginCol      = 3,
+		marginCol      = 4,
 		marginRow      = 2,
 		plotHeight     = 13,
 		plotWidth      = 11,
@@ -57,4 +58,45 @@ function getHeatmapReport
 	)
 
 	return heatmap.report
+}
+
+function getHeatmapReport
+(
+  	Matrix exprMatrix,
+  	CSV geneNames,
+	record group,
+	string sectionType,
+	float cexRow = 0.3
+) -> (Latex report)
+{
+	geneCount = RowCount(exprMatrix, limit1=2)
+	
+	heatmapReport = switch geneCount 
+	{
+		case small = LatexCombiner
+		(
+			tail         = "No heatmap available because not enough significant DEGs.",
+			sectionTitle = "Heatmap of genes differentially expressed between " + group.caseG + " and " + group.controlG,
+			sectionType  = sectionType			
+		)
+		
+		case medium = heatmapReportNotEmpty
+		(
+			exprMatrix  = exprMatrix,
+			geneNames   = geneNames,
+			group       = group,
+			sectionType = sectionType,
+			cexRow      = cexRow
+		)
+		
+		case large = StringInput(content="dummy")
+
+		return ExclusiveCombiner
+		(
+			item1A = small.document,  
+			item2A = medium.report
+		)
+	}
+	
+	return heatmapReport.itemA
 }	
