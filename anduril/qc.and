@@ -5,6 +5,7 @@ geneBodyCoveragePlotScript = StringInput(content=
 			document.dir <- get.output(cf, 'document')
 			section.title <- get.parameter(cf, 'param1', type = 'string')
 			section.type <- get.parameter(cf, 'param2', type = 'string')
+			cexRow <- get.parameter(cf, 'param3', type = 'float')
 			
 			
 			# for debugging
@@ -34,7 +35,7 @@ geneBodyCoveragePlotScript = StringInput(content=
 
 			rc <- cm.colors(ncol(cov.norm))
 			heatmap(cov.norm, scale=c("none"), keep.dendro=T, Colv = NA, labCol=NA,
-					col=cm.colors(256), margins = c(6, 8), cexRow=1, cexCol=1,
+					col=cm.colors(256), margins = c(6, 8), cexRow=cexRow, cexCol=1,
 					xlab="Gene body percentile (5'->3')", 
 					add.expr=x_axis_expr <- axis(side=1,at=c(1,10,20,30,40,50,60,70,80,90,100),
 					labels=c("1","10","20","30","40","50","60","70","80","90","100"))
@@ -51,7 +52,7 @@ geneBodyCoveragePlotScript = StringInput(content=
 	  			tex <- c(tex, sprintf('%s{%s}\\label{%s}', section.type, section.title,	instance.name))
 			}			
 			tex <- c(tex, latex.figure(plot.curve, image.height=16, caption="Gene body coverage 5' to 3. The more uniform the distribution the better. Distributions heavily skewed to 5' or 3' usually indicate low quality of input RNA."))		    			    
-			tex <- c(tex, latex.figure(plot.heatmap, image.height=16, caption="Heatmap of gene body coverage from 5' to 3'. Darker colors indicate higher coverage. Samples (rows) with similar coverage distribution are clustered together. These clusters should not correspond to biological subgroups of interest to exclude batch effects."))		    			    
+			tex <- c(tex, latex.figure(plot.heatmap, image.height=16, caption="Heatmap of gene body coverage from 5' to 3'. Darker colors indicate higher coverage. Samples (rows) with similar coverage distribution are clustered together. These clusters should not correspond to biological subgroups of interest to avoid batch effects."))		    			    
 
 			table.out <- data.frame() # not used
 			document.out <- tex
@@ -70,7 +71,9 @@ function getQCReport
 	string           	title = "Quality Control",
 	string              genome = "human/hg19",
 	int					readStatsSamplesPerRow = 8,
-	int                 readStatsYMax = 40
+	int                 readStatsYMax = 40,
+	float               cexClusterHeatmap = 0.8,
+	float               cexGeneBodyCoverage = 1
 ) -> (Latex report)
 {
 
@@ -110,6 +113,7 @@ function getQCReport
 		table1 = combinedCoverage.csv,
 		param1 = "Gene body coverage of 'house keeping' genes",
 		param2 = "subsection",
+		param3 = cexGeneBodyCoverage,
 		script = geneBodyCoveragePlotScript
 	)
 	
@@ -141,7 +145,8 @@ function getQCReport
 		groups = groups,
 		readStats = readStats,
 		geneBodyCoverages = combinedCoverage,
-		sectionTitle = "Sample clustering independent of gene expression values"
+		sectionTitle = "Sample clustering independent of gene expression values",
+		cexLabel = 0.7
 	)
 
     mds2D = MDSPlot
@@ -163,21 +168,22 @@ function getQCReport
 		sectionTitle = "Hierarchical clustering of samples",
 		rlog         = false,
 		vst          = true,
-		voom         = false
+		voom         = false,
+		cexRow       = cexClusterHeatmap
 	)
 
     boxplot = BoxPlot
     (
     	matr1      = expr,
 		groups     = groups,
-		caption1   = "",
-		height     = 5,
-		width      = 9,
+		height     = 12,
+		width      = 20,
 		pagebreak  = true,
 		drawLegend = false,
 		plotType   = "boxplot",
-		pngImage   = true,
-		title1     = "Distributions of the expression values per sample",
+		pngImage   = false,
+		title1     = "Distributions of expression values per sample",
+		caption1   = "Samples should display similar distributions to avoid batch effects. If few samples have very different distributions consider removing them from the analysis.",
 		@bind      = cumsum
 	)
 

@@ -3,12 +3,11 @@ function getDEGBoxPlots
 (
 	CSV degs,
 	Matrix exprMatrix,
-	CSV sampleGroupsSimple,
+	SampleGroupTable sampleGroups,
 	CSV geneAnnot,
 	string direction,
-	record group,
+	record comparison,
 	string sectionType,
-	string groupOrder = "",
 	boolean labelOutliers = true,
 	float cexGroupLabel = 1,
 	float height = 7
@@ -17,13 +16,13 @@ function getDEGBoxPlots
 	// which direction?
 	if (direction == "up") {
 		degsFiltered = TableQuery(table1 = degs, query='SELECT "Ensembl" FROM table1 WHERE "fc" > 0 LIMIT 28')
-		caption = 'Top-28 genes with higher expression in '+group.caseG+" than "+group.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."
-		sectionTitle = 'Top-28 significant genes with higher expression in '+group.caseG+' than '+group.controlG+' samples'                         
+		caption = 'Top-28 genes with higher expression in '+comparison.caseG+" than "+comparison.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."
+		sectionTitle = 'Top-28 significant genes with higher expression in '+comparison.caseG+' than '+comparison.controlG+' samples'                         
 	} 
 	else if (direction == "down") {
 		degsFiltered = TableQuery(table1 = degs, query='SELECT "Ensembl" FROM table1 WHERE "fc" < 0 LIMIT 28')                        
-		caption = 'Top-28 genes with lower expression in '+group.caseG+" than "+group.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."                         
-		sectionTitle = 'Top-28 significant genes with lower expression in '+group.caseG+' than '+group.controlG+' samples'                         
+		caption = 'Top-28 genes with lower expression in '+comparison.caseG+" than "+comparison.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."                         
+		sectionTitle = 'Top-28 significant genes with lower expression in '+comparison.caseG+' than '+comparison.controlG+' samples'                         
 	}
 	else {
 		std.fail("Invalid direction: "+direction)
@@ -32,10 +31,10 @@ function getDEGBoxPlots
 	geneBoxplot = ExpressionBoxPlot
 	(
   		expr   = exprMatrix,
-		groups = sampleGroupsSimple,
-		groupOrder = groupOrder,
+		sampleGroups = sampleGroups,
 		annotation = geneAnnot,
 		geneIds = degsFiltered,
+		includeGroups = std.concat(comparison.caseG, comparison.controlG, comparison.otherG, sep=","),
 		height = height,
 		nRow = 4,
 		nCol = 7,

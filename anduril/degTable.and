@@ -9,7 +9,7 @@ function getDEGTableReport
 	CSV	degs,
 	CSV degReportRefs,
 	string direction,
-	record group,
+	record comparison,
 	string ID,
 	string section = "",
 	string sectionType = ""
@@ -29,17 +29,17 @@ function getDEGTableReport
 	// define table caption
 
 	if (direction == "up") {
-		caption = "List of genes significantly higher expressed in "+group.caseG+" samples compared to "+group.controlG+
-				  ' samples, where the $\log_2$ fold-change (fc)$ \geq '+fcLimitInclude+"$ and the minimum mean expression is above "+minExprInclude+
-				  " in at least one of the two groups. The highest p-value accepted is "+pLimitInclude+
-				  ". Multiple hypothesis corrected p-values with a limit of "+qLimitInclude+" are shown as qValues."
+		caption = "List of genes significantly higher expressed in "+comparison.caseG+" samples compared to "+comparison.controlG+
+				  ' samples, where the $\log_2$ fold-change (fc)$ \geq '+comparison.fcLimit+"$ and the minimum mean expression is above "+comparison.exprLimit+
+				  " in at least one of the two groups. The highest p-value accepted is "+comparison.pLimit+
+				  ". Multiple hypothesis corrected p-values with a limit of "+comparison.qLimit+" are shown as qValues."
 	} 
 	else 
 	{
-		caption = "List of genes significantly lower expressed in "+group.caseG+" samples compared to "+group.controlG+
-				  ' samples, where the $\log_2$ fold-change (fc)$ \leq -'+fcLimitInclude+"$ and the minimum mean expression is above "+minExprInclude+
-				  " in at least one of the two groups. The highest p-value accepted is "+pLimitInclude+
-				  ". Multiple hypothesis corrected p-values with a limit of "+qLimitInclude+" are shown as qValues."
+		caption = "List of genes significantly lower expressed in "+comparison.caseG+" samples compared to "+comparison.controlG+
+				  ' samples, where the $\log_2$ fold-change (fc)$ \leq -'+comparison.fcLimit+"$ and the minimum mean expression is above "+comparison.exprLimit+
+				  " in at least one of the two groups. The highest p-value accepted is "+comparison.pLimit+
+				  ". Multiple hypothesis corrected p-values with a limit of "+comparison.qLimit+" are shown as qValues."
 	}
 	
 	if (ID == "iAMPspecific") {

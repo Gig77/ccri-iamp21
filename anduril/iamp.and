@@ -146,7 +146,7 @@ for comparison : std.itercsv(comparisons)
 	{
 		'caseG'       = gCase,
 		'controlG'    = gControl,
-		'addG'        = comparison.ControlGroups,
+		'otherG'      = comparison.ControlGroups,
 		'sampleIdLst' = sampleIdLst.ids,
 		'sampleIds'   = std.strReplace(std.fRead(sampleIdLst.ids), "\n", ",", "^[^,]+,(.*)", "$1", ",$", ""),
 		'desc'        = comparison.Description
@@ -262,7 +262,7 @@ for ID, group : comparisonGroups
 			samples                 = sampleGroups,
 		    nameControl             = group.controlG,
 		    nameCase                = group.caseG,
-		    additionalGroups        = group.addG,
+		    additionalGroups        = group.otherG,
 		    label                   = ID,
 		    minReplicatesForReplace = 7,
 		    @name                   = "deseq_" + ID
@@ -451,11 +451,10 @@ for ID, group : comparisonGroups
 	(
 		degs = degTable,
 		exprMatrix = deseqExprMatrix.expr,
-		sampleGroupsSimple=sampleGroupsSimple,
+		force sampleGroups=sampleGroups,
 		geneAnnot=geneAnnot,
 		direction="up",
-		group=group,
-		groupOrder = "CD19,ER,DS,iAMP",
+		comparison=group,
 		sectionType="subsubsection",
 		@name = "degBoxplotUp_"+ID
 	)
@@ -464,11 +463,10 @@ for ID, group : comparisonGroups
 	(
 		degs = degTable,
 		exprMatrix = deseqExprMatrix.expr,
-		sampleGroupsSimple=sampleGroupsSimple,
+		force sampleGroups=sampleGroups,
 		geneAnnot=geneAnnot,
 		direction="down",
-		group=group,
-		groupOrder = "CD19,ER,DS,iAMP",
+		comparison=group,
 		sectionType="subsubsection",
 		@name = "degBoxplotDn_"+ID
 	)
@@ -741,8 +739,8 @@ genesCRA = TableQuery(table1 = geneAnnot @require,  query  = '''SELECT "Ensembl 
 boxplotCRA = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
-	groups = sampleGroupsSimple  @require @doc="Sample sets",
-	groupOrder = "CD19,ER,DS,iAMP",
+	force sampleGroups = sampleGroups,
+	includeGroups = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot           @require @doc="Gene annotations",
 	geneIds = genesCRA,
 	nCol = 10,
@@ -758,8 +756,8 @@ boxplotCRA = ExpressionBoxPlot
 boxplotRibosomalProteins = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr,
-	groups = sampleGroupsSimple,
-	groupOrder = "CD19,ER,DS,iAMP",
+	force sampleGroups = sampleGroups,
+	includeGroups = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot,
 	hgnc = "RPL10,RPL10A,RPL10L,RPL11,RPL12,RPL13,RPL13A,RPL14,RPL15,RPL17,RPL18,RPL18A,RPL19,RPL21,RPL22,RPL22L1,RPL23,RPL23A,RPL24,RPL26,RPL26L1,RPL27,RPL27A,RPL28,RPL29,RPL3,RPL30,RPL31,RPL32,RPL34,RPL35,RPL35A,RPL36,RPL36A,RPL36AL,RPL37,RPL37A,RPL38,RPL39,RPL39L,RPL3L,RPL4,RPL41,RPL5,RPL6,RPL7,RPL7A,RPL7L1,RPL8,RPL9,RPLP0,RPLP1,RPLP2,RPS10,RPS11,RPS12,RPS13,RPS14,RPS15,RPS15A,RPS16,RPS17,RPS17L,RPS18,RPS19,RPS19BP1,RPS2,RPS20,RPS21,RPS23,RPS24,RPS25,RPS26,RPS27,RPS27A,RPS27L,RPS28,RPS29,RPS3,RPS3A,RPS4X,RPS4Y1,RPS4Y2,RPS5,RPS6,RPS6KA1,RPS6KA2,RPS6KA3,RPS6KA4,RPS6KA5,RPS6KA6,RPS6KB1,RPS6KB2,RPS6KC1,RPS6KL1,RPS7,RPS8,RPS9,RPSA",
 	nRow = 7,
@@ -775,8 +773,8 @@ boxplotRibosomalProteins = ExpressionBoxPlot
 boxplotEpigeneticModifiers = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr,
-	groups = sampleGroupsSimple,
-	groupOrder = "CD19,ER,DS,iAMP",
+	force sampleGroups = sampleGroups,
+	includeGroups = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot,
 	hgnc = "HDAC1,HDAC2,HDAC3,HDAC4,HDAC5,HDAC6,HDAC7,HDAC8,HDAC9,HDAC10,HDAC11,EP300,EZH1,EZH2,SUZ12,EED,EHMT1,EHMT2,KMT2A,KMT2D,KMT2C,DNMT1,DNMT3A,DNMT3B,TET1,TET2,CREBBP,SUV39H1",
 	nRow = 4,
@@ -791,8 +789,8 @@ boxplotEpigeneticModifiers = ExpressionBoxPlot
 boxplotProtocadherin = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr,
-	groups = sampleGroupsSimple,
-	groupOrder = "CD19,ER,DS,iAMP",
+	force sampleGroups = sampleGroups,
+	includeGroups = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot,
 	hgnc = "PCDHGB3,PCDHGA10,PCDHGA9,PCDHGC3,PCDHGA1,PCDHGA6,PCDHGA7,PCDHGA4,PCDHGA8,PCDHGB6,PCDHGC5,PCDHGB1,PCDHGA2,PCDHGA5,PCDHGC4,PCDHGA12,PCDHGA3,PCDHGB2,PCDHGB7,PCDHGB4,PCDHGA11",
 	nRow = 4,
@@ -807,8 +805,8 @@ boxplotProtocadherin = ExpressionBoxPlot
 boxplotMartens = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
-	groups = sampleGroupsSimple  @require @doc="Sample sets",
-	groupOrder = "CD19,ER,DS,iAMP",
+	force sampleGroups = sampleGroups  @require @doc="Sample sets",
+	includeGroups = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot           @require @doc="Gene annotations",
 	hgnc = "MBD6BP2,FHOD1,PLEK,KRI1,DENND3,DNM2,PLXND1,MCAM,ADAM8,FLT3,PLEKHO1,PSAP,CSK,DDIT4,PTPN6,NRXN2,MYO9B,C15orf39,NCOR2,RASGRP2,PREX1,GALNT6,IFNAR2,HECW1,CYTH4,C5AR1,CTSD,FBXO46,AKNA",
 	nCol = 7,
@@ -822,8 +820,8 @@ boxplotMartens = ExpressionBoxPlot
 boxplotPark2003Table2 = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
-	groups = sampleGroupsSimple  @require @doc="Sample sets",
-	groupOrder = "CD19,ER,DS,iAMP",
+	force sampleGroups = sampleGroups  @require @doc="Sample sets",
+	includeGroups = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot           @require @doc="Gene annotations",
 	hgnc = "PLEK,PSAP,PTPN6,CEBPA,SMOX,TNFAIP2,NCF1,RARG,MERTK,FLNB,ELF4,LSP1,GYPC,TNFRSF1B,THBD,ST3GAL1,NDRG1,ID1,IDH1,LITAF,SLA",
 	nCol = 6,
@@ -837,8 +835,8 @@ boxplotPark2003Table2 = ExpressionBoxPlot
 boxplotHIST1Cluster = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
-	groups = sampleGroupsSimple  @require @doc="Sample sets",
-	groupOrder = "CD19,ER,DS,iAMP",
+	force sampleGroups = sampleGroups  @require @doc="Sample sets",
+	includeGroups = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot           @require @doc="Gene annotations",
 	hgnc = "HIST1H2BJ,HIST1H2BD,HIST1H4H,HIST1H2AC,HIST1H2AG,HIST1H2BF,HIST1H2BK",
 	nCol = 4,
@@ -852,8 +850,8 @@ boxplotHIST1Cluster = ExpressionBoxPlot
 boxplotOther = ExpressionBoxPlot
 (
 	expr   = deseqExprMatrix.expr    @require @doc="Expression matrix",
-	groups = sampleGroupsSimple  @require @doc="Sample sets",
-	groupOrder = "CD19,ER,DS,iAMP",
+	force sampleGroups = sampleGroups  @require @doc="Sample sets",
+	includeGroups = "CD19,ER,DS,iAMP",
 	annotation = geneAnnot           @require @doc="Gene annotations",
 	hgnc = "ETV6,RUNX1,CRLF2,P2RY8,EBF1,PAX5,VPREB1,HMGN1,MME,CD34,CD19,MS4A1,SPI1,ETS2,GATA2,GAPDH,KIT,ERG,LGMN,TEK,CD40,TRAF1,TRAF2,TRAF3,TRAF5,MLLT6,MYC,GUSB",
 	nCol = 6,

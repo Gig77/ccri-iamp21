@@ -14,9 +14,9 @@ function degExcelOutput
 )
 {	
 	degAnnotatedLst = record()
-	for ID, group : comparisons
+	for ID, comparison : comparisons
 	{
-		quotedSampleIds = 'G."' + std.strReplace(group.sampleIds, ',', '", G."') + '"'	
+		quotedSampleIds = 'G."' + std.strReplace(comparison.sampleIds, ',', '", G."') + '"'	
 		degAnnotated = TableQuery
 		(
 			table1 = degAllLst[ID] @require,
@@ -29,8 +29,8 @@ function degExcelOutput
 				D."Description"                       AS "Description",
 				CONCAT(D."Chromosome Name", D."Band") AS "Band",
 				G."fc'''+ID+'''", 
-				G."meanExprE'''+ID+'''"                AS "expr_'''+group.caseG+'''", 
-				G."meanExprC'''+ID+'''"                AS "expr_'''+group.controlG+'''", 
+				G."meanExprE'''+ID+'''"                AS "expr_'''+comparison.caseG+'''", 
+				G."meanExprC'''+ID+'''"                AS "expr_'''+comparison.controlG+'''", 
 				G."p'''+ID+'''", 
 				G."q'''+ID+'''",
 				'''+quotedSampleIds+'''
@@ -64,7 +64,7 @@ function degExcelOutput
 	)
 
 	comparedGroups = ""
-	for ID, group : comparisons { comparedGroups = comparedGroups + group.caseG + "," + group.controlG + "," }
+	for ID, comparison : comparisons { comparedGroups = comparedGroups + comparison.caseG + "," + comparison.controlG + "," }
 	comparisonIds = std.recordToString(comparisons, values=false)
 
 	degAllTable = REvaluate
@@ -123,7 +123,7 @@ function degExcelOutput
 	eCSSRow = eCSSRow +     std.concat("Row", "Column", "Format",  "Bold", "Align", "FontSize", "Underline", "TextColor", "BGColor", "Border", "Condition",           sep="\t") + "\n"
 	eCSSRow = eCSSRow +     std.concat("1",   "*",      "NA",      "true", "NA",    "NA",       "NA",        "#000000",   "NA",      "NA",     "NA",                  sep="\t") + "\n"
 	counter = 1
-	for ID, group : comparisons
+	for ID, comparison : comparisons
 	{ 
 		// no modulo...
 		if (counter == 1 || counter == 3 || counter == 5 || counter == 7 || counter == 9 || counter == 11 || counter == 13 || counter == 15 || counter == 17) {
@@ -131,13 +131,13 @@ function degExcelOutput
 		} else {
 			bgColor = "NA"
 		}
-		eCSSRow = eCSSRow + std.concat("*", "fc"+ID,    "0.00",    "NA",   "NA",    "NA",       "NA",        "NA",        bgColor,      "NA",     "NA",                  sep="\t") + "\n"
-		eCSSRow = eCSSRow + std.concat("*", "fc"+ID,    "0.00",    "true", "NA",    "NA",       "NA",        "#0000BB",   bgColor,      "NA",     "<= -"+fcLimitInclude, sep="\t") + "\n"
-		eCSSRow = eCSSRow + std.concat("*", "fc"+ID,    "0.00",    "true", "NA",    "NA",       "NA",        "#FF0000",   bgColor,      "NA",     ">= " +fcLimitInclude, sep="\t") + "\n"
-		eCSSRow = eCSSRow + std.concat("*", "p"+ID,     "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",        bgColor,      "NA",     "NA",                  sep="\t") + "\n"
-		eCSSRow = eCSSRow + std.concat("*", "p"+ID,     "0.0e00",  "true", "NA",    "NA",       "NA",        "#ff0000",   bgColor,      "NA",     "<= " +pLimitInclude,  sep="\t") + "\n"
-		eCSSRow = eCSSRow + std.concat("*", "q"+ID,     "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",        bgColor,      "NA",     "NA",                  sep="\t") + "\n"
-		eCSSRow = eCSSRow + std.concat("*", "q"+ID,     "0.0e00",  "true", "NA",    "NA",       "NA",        "#ff0000",   bgColor,      "NA",     "<= " +qLimitInclude,  sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "fc"+ID,    "0.00",    "NA",   "NA",    "NA",       "NA",        "NA",        bgColor,      "NA",     "NA",                      sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "fc"+ID,    "0.00",    "true", "NA",    "NA",       "NA",        "#0000BB",   bgColor,      "NA",     "<= -"+comparison.fcLimit, sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "fc"+ID,    "0.00",    "true", "NA",    "NA",       "NA",        "#FF0000",   bgColor,      "NA",     ">= " +comparison.fcLimit, sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "p"+ID,     "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",        bgColor,      "NA",     "NA",                      sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "p"+ID,     "0.0e00",  "true", "NA",    "NA",       "NA",        "#ff0000",   bgColor,      "NA",     "<= " +comparison.pLimit,  sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "q"+ID,     "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",        bgColor,      "NA",     "NA",                      sep="\t") + "\n"
+		eCSSRow = eCSSRow + std.concat("*", "q"+ID,     "0.0e00",  "true", "NA",    "NA",       "NA",        "#ff0000",   bgColor,      "NA",     "<= " +comparison.qLimit,  sep="\t") + "\n"
 		
 		counter = counter + 1
 	}
