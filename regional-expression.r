@@ -46,6 +46,7 @@ genes <- merge(genes.dedup, unique(genes[,names(genes)[!names(genes) %in% "hgnc_
 counts.ann <- merge(genes[,c("ensembl_gene_id", "hgnc_symbol", "chromosome_name", "start_position", "end_position")], counts.scaled.withCD19, by.x="ensembl_gene_id", by.y="row.names")
 counts.ann$chromosome_name <- paste0("chr", counts.ann$chromosome_name)
 counts.ann$hgnc_symbol <- as.character(counts.ann$hgnc_symbol)
+counts.ann <- counts.ann[!duplicated(paste0(counts.ann$chromosome_name, counts.ann$start_position)),] # only one value per coordinate
 
 gr <- makeGRangesFromDataFrame(counts.ann,
 		keep.extra.columns=TRUE,
@@ -155,11 +156,25 @@ gr.ma200 <- gr.data
 values(gr.ma200) <- caTools::runmean(as.matrix(values(gr.data)), 200)
 names(mcols(gr.ma200)) <- names(mcols(gr.data))
 
+# smooth with cubic splines
+# this code works, but does not really produce better results than the moving averages; maybe try loess...
+# 'df' parameter controls smoothness of curve (lower is smoother)
+#---
+#gr.spline <- gr.data
+#for (c in unique(seqnames(gr.spline))) {
+#  x <- start(gr.spline[seqnames(gr.spline)==c,])
+#  for (s in names(values(gr.spline))) {
+#    y <- values(gr.spline[seqnames(gr.spline)==c,])[[s]]
+#    smoothed <- smooth.spline(x, y, tol=1, df=10)
+#    values(gr.spline[seqnames(gr.spline)==c,s]) <- smoothed$y
+#  }
+#}
+
 # chromosomal plots (subtype averages)
 #---
 pdf("/mnt/projects/iamp/results/regional-expression.averages.pdf", width=18, height=12)
-#for (chr in c("chr21")) {
-for (chr in c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY")) {
+for (chr in c("chr3")) {
+#for (chr in c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY")) {
 	
 	# ideogram
 	itrack <- IdeogramTrack(genome = "hg19", chromosome = chr)
