@@ -48,7 +48,8 @@ function degExcelOutput
 	
 	eCSSRow = ""
 	eCSSRow = eCSSRow + std.concat("Row", "Column", "Format",  "Bold", "Align", "FontSize", "Underline", "TextColor", "BGColor", "Border", "Condition", sep="\t") + "\n"
-	eCSSRow = eCSSRow + std.concat("*",   "qValue", "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",         "NA",      "NA",     "NA",       sep="\t") + "\n"
+	eCSSRow = eCSSRow + std.concat("*",   "p",      "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",         "NA",      "NA",     "NA",       sep="\t") + "\n"
+	eCSSRow = eCSSRow + std.concat("*",   "q",      "0.0e00",  "NA",   "NA",    "NA",       "NA",        "NA",         "NA",      "NA",     "NA",       sep="\t") + "\n"
 	eCSSRow = eCSSRow + std.concat("*",   "start",  "#,##0",   "NA",   "NA",    "NA",       "NA",        "NA",         "NA",      "NA",     "NA",       sep="\t") + "\n"
 	eCSSRow = eCSSRow + std.concat("*",   "end",    "#,##0",   "NA",   "NA",    "NA",       "NA",        "NA",         "NA",      "NA",     "NA",       sep="\t") + "\n"
 	degCalledCSS = StringInput(content=eCSSRow)

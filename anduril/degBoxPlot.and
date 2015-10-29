@@ -10,17 +10,18 @@ function getDEGBoxPlots
 	string sectionType,
 	boolean labelOutliers = true,
 	float cexGroupLabel = 1,
-	float height = 7
+	float height = 7,
+	string includeGroups = ""
 ) -> (Latex report)
 {
 	// which direction?
 	if (direction == "up") {
-		degsFiltered = TableQuery(table1 = degs, query='SELECT "Ensembl" FROM table1 WHERE "fc" > 0 LIMIT 28')
+		degsFiltered = TableQuery(table1 = degs, query='SELECT "ids" FROM table1 WHERE "fc" > 0 LIMIT 28')
 		caption = 'Top-28 genes with higher expression in '+comparison.caseG+" than "+comparison.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."
 		sectionTitle = 'Top-28 significant genes with higher expression in '+comparison.caseG+' than '+comparison.controlG+' samples'                         
 	} 
 	else if (direction == "down") {
-		degsFiltered = TableQuery(table1 = degs, query='SELECT "Ensembl" FROM table1 WHERE "fc" < 0 LIMIT 28')                        
+		degsFiltered = TableQuery(table1 = degs, query='SELECT "ids" FROM table1 WHERE "fc" < 0 LIMIT 28')                        
 		caption = 'Top-28 genes with lower expression in '+comparison.caseG+" than "+comparison.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."                         
 		sectionTitle = 'Top-28 significant genes with lower expression in '+comparison.caseG+' than '+comparison.controlG+' samples'                         
 	}
@@ -28,13 +29,17 @@ function getDEGBoxPlots
 		std.fail("Invalid direction: "+direction)
 	}
 
+	if (includeGroups == "") {
+		includeGroups = std.concat(comparison.caseG, comparison.controlG, comparison.otherG, sep=",")
+	}
+	
 	geneBoxplot = ExpressionBoxPlot
 	(
   		expr   = exprMatrix,
 		sampleGroups = sampleGroups,
 		annotation = geneAnnot,
 		geneIds = degsFiltered,
-		includeGroups = std.concat(comparison.caseG, comparison.controlG, comparison.otherG, sep=","),
+		includeGroups = includeGroups,
 		height = height,
 		nRow = 4,
 		nCol = 7,

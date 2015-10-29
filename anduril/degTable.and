@@ -1,6 +1,6 @@
 hyperlinkRule = StringInput(content=
 	"URL\trefCol\tvalueCol\n" +
-	"http://www.ensembl.org/id/$ID$\tEnsembl\tEnsembl\n" +
+	"http://www.ensembl.org/id/$ID$\tids\tids\n" +
 	"http://www.genecards.org/cgi-bin/carddisp.pl?gene=$ID$\tGene\tGene\n"
 )
 
@@ -54,12 +54,13 @@ function getDEGTableReport
 		refs         = hyperlinkRule,
 		attach       = false,
 		caption      = caption,
-		columns      = "Ensembl,Gene,fc,qValue,exprA,exprB,Band,Description",
+		columns      = "ids,Gene,fc,q,meanA,meanB,Band,Description",
+		rename       = "ids=Ensembl,q=qValue",
 		colFormat    = "llrrrrcp{7.5cm}",
 		countRows    = true,
 		dropMissing  = false,
 		listCols     = "",
-		numberFormat = "fc=#0.0,qValue=#0.0E00,exprA=#0.0,exprB=#0.0",
+		numberFormat = "fc=#0.0,q=#0.0E00,meanA=#0.0,meanB=#0.0",
 		pageBreak    = false,
 		section      = section,
 		sectionType  = sectionType

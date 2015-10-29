@@ -93,9 +93,7 @@ function getGOEnrichmentReport
 		colFormat    = "ccccp{3.5cm}p{9.5cm}",
 		numberFormat = "pBG=#0.00,pDEG=#0.00,pAdj=#0.0E00,Genes=RAW_LATEX",
 		countRows    = true,
-		skipEmpty    = true,
-		sectionType  = sectionType,
-		section      = sectionTitle
+		skipEmpty    = true
 	)
 	
 	metadata = std.metadata()
@@ -104,16 +102,6 @@ function getGOEnrichmentReport
 	                  "-goTableReport}. Darkness of red reflects significance of enrichment and " +
 					  "edge thickness is proportional to the numbers of genes sharing the following annotation."
 					  
-	goGraphCC = GraphVisualizer
-	(
-		graph          = goEnrich.graphCC,
-		titleAttribute = "",
-		layout         = "hierarchical",
-		reportWidth    = 18,
-		minSize        = 2,
-		reportCaption  = goCaptionPrefix + "cellular component" + goCaptionSuffix
-	)
-	
 	goGraphMF = GraphVisualizer
 	(
 		graph          = goEnrich.graphMF,
@@ -132,14 +120,27 @@ function getGOEnrichmentReport
 		reportWidth    = 18,
 		minSize        = 2,
 		reportHeight   = 23,
-		reportCaption  = goCaptionPrefix + "biological process" + goCaptionSuffix)
+		reportCaption  = goCaptionPrefix + "biological process" + goCaptionSuffix
+	)
   	
+	goGraphCC = GraphVisualizer
+	(
+		graph          = goEnrich.graphCC,
+		titleAttribute = "",
+		layout         = "hierarchical",
+		reportWidth    = 18,
+		minSize        = 2,
+		reportCaption  = goCaptionPrefix + "cellular component" + goCaptionSuffix
+	)
+	
   	goReport = LatexCombiner
   	(
-  		goTableReport, 
-  		goGraphCC, 
   		goGraphMF, 
   		goGraphBP, 
+  		goGraphCC, 
+  		goTableReport,
+		sectionType  = sectionType,
+		sectionTitle = sectionTitle,  		 
   		pagebreak=true
   	)
 	

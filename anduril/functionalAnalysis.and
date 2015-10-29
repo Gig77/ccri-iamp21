@@ -183,7 +183,7 @@ function createFunctionalAnalysisReport
  			table1   = degTable @require,
             table2   = stest    @require,
             query    = '''
-				SELECT "Ensembl", "status" FROM table1
+				SELECT "ids" AS "Ensembl", "status" FROM table1
                 UNION
                 SELECT "ids" AS "Ensembl", -2 AS "status"
                 FROM   table2

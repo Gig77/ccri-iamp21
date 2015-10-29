@@ -74,7 +74,7 @@ function getQCReport
 	int                 readStatsYMax = 40,
 	float               cexClusterHeatmap = 0.8,
 	float               cexGeneBodyCoverage = 1
-) -> (Latex report)
+) -> (Latex report, Matrix transformedMatrix)
 {
 
 	// determine number of reads per sample and category
@@ -200,7 +200,7 @@ function getQCReport
 		pagebreak    = true
 	)
 	
-	return report
+	return record(report=report, transformedMatrix=samplesClusterHeatmap.vst)
 }
 
 // note: the following function is inline and not in an external component such that BAM read counting can start immediately after alignment

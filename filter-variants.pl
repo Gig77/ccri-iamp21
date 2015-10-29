@@ -1,7 +1,7 @@
 use warnings FATAL => qw( all );
 use strict;
 
-use lib "$ENV{HOME}/generic/scripts";
+use lib "/mnt/projects/generic/scripts";
 use List::Util qw(min max);
 use Vcf;
 use Tabix;
