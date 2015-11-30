@@ -222,6 +222,7 @@ include "qc.and"
 
 qcReport  = getQCReport
 (
+	samples = samples,
 	alignedBAMs = alignedBams,
     gtf = gtf,
     counts = bamCounts,
@@ -265,7 +266,7 @@ for ID, group : comparisonGroups
 		    additionalGroups        = group.otherG,
 		    label                   = ID,
 		    minReplicatesForReplace = 7,
-		    @name                   = "deseq_" + ID
+		    @name                   = "deseq_" + std.quote(ID, type="Anduril")
 		)
 		degAllLst[ID] = deseq.results
 			
@@ -289,7 +290,7 @@ for ID, group : comparisonGroups
 						   ("meanExprC"""+ID+""""  >= """ + minExprInclude + """))
 						   ORDER  BY 1
 				""",
-				@name  = "degCalled_"+ID
+				@name  = "degCalled_" + std.quote(ID, type="Anduril")
 		)
 		degCalledLst[ID] = degCalled.table
 	}
@@ -317,7 +318,7 @@ for ID, group : comparisonGroups
 			            FROM table1 LEFT OUTER JOIN table2 ON table1."ids" = table2."ids" 
 						WHERE table2."qERvsDS" IS NULL OR table2."qERvsDS" >= 0.3
 			            ''',
-			@name  = "deseq_" + ID
+			@name  = "deseq_" + std.quote(ID, type="Anduril")
 		)
 		degAllLst[ID] = deseq.table
 
@@ -399,7 +400,7 @@ for ID, group : comparisonGroups
 		ID=ID,
 		section="Genes with higher expression in "+group.caseG+" than "+group.controlG+" samples",
 		sectionType="subsubsection",
-		@name = "degTableUp_"+ID
+		@name = "degTableUp_" + std.quote(ID, type="Anduril")
 	)
 
 	degTableDn = getDEGTableReport
@@ -411,7 +412,7 @@ for ID, group : comparisonGroups
 		ID=ID,
 		section="Genes with lower expression in "+group.caseG+" than "+group.controlG+" samples",
 		sectionType="subsubsection",
-		@name = "degTableDn_"+ID
+		@name = "degTableDn_" + std.quote(ID, type="Anduril")
 	)
 
 	//--- BOX PLOTS TOP UP- AND DOWN-REGULATED GENES ----------------------------------------------------------------------//
@@ -425,7 +426,7 @@ for ID, group : comparisonGroups
 		direction="up",
 		comparison=group,
 		sectionType="subsubsection",
-		@name = "degBoxplotUp_"+ID
+		@name = "degBoxplotUp_" + std.quote(ID, type="Anduril")
 	)
 
 	degBoxplotDn = getDEGBoxPlots
@@ -437,7 +438,7 @@ for ID, group : comparisonGroups
 		direction="down",
 		comparison=group,
 		sectionType="subsubsection",
-		@name = "degBoxplotDn_"+ID
+		@name = "degBoxplotDn_" + std.quote(ID, type="Anduril")
 	)
 
 	//--- EXPRESSION HEATMAP --------------------------------------------------------------------------//
@@ -449,7 +450,7 @@ for ID, group : comparisonGroups
 		includeColumns = group.sampleIdLst,
 		includeColumns = "RowName",
 		colOrder       = true,
-		@name          = "exprMatrix_"+ID
+		@name          = "exprMatrix_" + std.quote(ID, type="Anduril")
 	)                      
 
 	exprHeatmap = getHeatmapReport
@@ -458,7 +459,7 @@ for ID, group : comparisonGroups
 		geneNames = geneNames,
 		group = group,
 		sectionType="subsubsection",
-		@name = "heatmap"+ID
+		@name = "heatmap" + std.quote(ID, type="Anduril")
 	)
 
 	//--- GO CLUSTERING -------------------------------------------------------------------------------//
@@ -486,7 +487,7 @@ for ID, group : comparisonGroups
 		ID           = ID,
 		sectionTitle = "GO terms enriched in DEGs between " + group.caseG + " and " + group.controlG,
 		sectionType  = "subsubsection",
-		@name        = "goEnrichment"+ID
+		@name        = "goEnrichment" + std.quote(ID, type="Anduril")
 	)
 
 	//--- GENE INTERACTION NETWORK --------------------------------------------------------------------//
@@ -515,7 +516,7 @@ for ID, group : comparisonGroups
 			FROM   table2 T2 LEFT JOIN table1 T1 ON T2."ids" = T1."ids" 
 			WHERE  T1."ids" IS NULL AND T2."meanExpr'''+ID+'''" < 10
             ''',
-		@name    = "statusTable_"+ID,
+		@name    = "statusTable_" + std.quote(ID, type="Anduril"),
 		@enabled = runNetwork
 	)
 	
@@ -560,7 +561,7 @@ for ID, group : comparisonGroups
 		expand            = "connected",
 		statusFilter      = "NA",
 		sectionType       = "subsubsection",
-		@name             = "network_"+ID,
+		@name             = "network_" + std.quote(ID, type="Anduril"),
 		@enabled          = runFunct
 	)
 	
@@ -857,7 +858,7 @@ for comparison : std.itercsv(comparisons) {
 		title=comparison.ID,
 		pvalue=0.01,
 		includeHeader=std.length(pgeReportLst)==0,
-		@name="pge_"+comparison.ID
+		@name="pge_" + std.quote(comparison.ID, type="Anduril")
 	)
 }
 	
@@ -965,7 +966,7 @@ for ID, group : comparisonGroups
 		annotation = geneNames,
 		colP = "p" + ID,
 		colFC= "fc" + ID,
-		@name = "rnk_" + ID,
+		@name = "rnk_" + std.quote(ID, type="Anduril"),
 		@enabled = runGseaMSigDB || runGseaGeneSigDB || runGseaDSigDB || runGseaTFTargets
 	)
 
@@ -983,14 +984,13 @@ for ID, group : comparisonGroups
 		        "/mnt/projects/generic/data/msigdb5.0/c6.all.v5.0.symbols.gmt," + 
 		        "/mnt/projects/generic/data/msigdb5.0/c7.all.v5.0.symbols.gmt," + 
 		        "/mnt/projects/generic/data/msigdb5.0/h.all.v5.0.symbols.gmt," +
-		        "/mnt/projects/generic/data/laurenti_2013_hematopoietic_lineages.gmt," + 
 		        "/mnt/projects/iamp/results/gsea/custom/mir_target_genesets.gmx," +
 		        "/mnt/projects/generic/data/ccri/ccri_custom_gene_sets.gmt," +
-		        "/mnt/projects/helena_veronika/data/gsea_custom_gene_sets.gmt",
+		        "/mnt/projects/generic/data/laurenti_2013_hematopoietic_lineages.gmt", 
 		options = "-nperm " + permutations + " -set_max 1000 -set_min 5",
 		@memory  = 7000,
 		@cpu     = 2, 			
-		@name = "gseaMSigDB_" + ID,
+		@name = "gseaMSigDB_" + std.quote(ID, type="Anduril"),
 		@enabled = runGseaMSigDB
 	)
 	gseaMSigDBUp[ID] = gseaMSigDB.enrichedUp
@@ -1007,7 +1007,7 @@ for ID, group : comparisonGroups
 		options = "-nperm " + permutations + " -set_max 1000 -set_min 5",
 		@memory  = 7000,
 		@cpu     = 2, 			
-		@name = "gseaGeneSigDB_" + ID,
+		@name = "gseaGeneSigDB_" + std.quote(ID, type="Anduril"),
 		@enabled = runGseaGeneSigDB
 	)
 	gseaGeneSigDBUp[ID] = gseaGeneSigDB.enrichedUp
@@ -1024,7 +1024,7 @@ for ID, group : comparisonGroups
 		options = "-nperm " + permutations + " -set_max 1000 -set_min 3",
 		@memory  = 7000,
 		@cpu     = 2, 			
-		@name = "gseaDSigDB_" + ID,
+		@name = "gseaDSigDB_" + std.quote(ID, type="Anduril"),
 		@enabled = runGseaDSigDB
 	)
 	gseaDSigDBUp[ID] = gseaDSigDB.enrichedUp
@@ -1048,7 +1048,7 @@ for ID, group : comparisonGroups
 		options = "-nperm " + permutations + " -set_max 5000 -set_min 3",
 		@memory  = 7000,
 		@cpu     = 2, 			
-		@name = "gseaTFTargets_" + ID,
+		@name = "gseaTFTargets_" + std.quote(ID, type="Anduril"),
 		@enabled = runGseaTFTargets
 	)
 	gseaTFTargetsUp[ID] = gseaTFTargets.enrichedUp

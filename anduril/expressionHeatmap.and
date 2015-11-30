@@ -4,7 +4,8 @@ function heatmapReportNotEmpty
   	CSV geneNames,
 	record group,
 	string sectionType,
-	float cexRow = 0.3
+	float cexRow,
+	float cexCol
 ) -> (Latex report)
 {
 	groupExprG = IDConvert
@@ -38,7 +39,7 @@ function heatmapReportNotEmpty
 	(
 		force matr     = groupExprGCorr.table,
 		caption        = "Heatmap of DEGs between "+group.caseG+" and "+group.controlG+".",
-		cexCol         = 1,
+		cexCol         = cexCol,
 		cexRow         = cexRow,
 		clusterMethod  = "average",
 		distanceMetric = "pcc",
@@ -66,10 +67,11 @@ function getHeatmapReport
   	CSV geneNames,
 	record group,
 	string sectionType,
-	float cexRow = 0.3
+	float cexRow = 0.3,
+	float cexCol = 1
 ) -> (Latex report)
 {
-	geneCount = RowCount(exprMatrix, limit1=2)
+	geneCount = RowCount(exprMatrix, limit1=3)
 	
 	heatmapReport = switch geneCount 
 	{
@@ -86,7 +88,8 @@ function getHeatmapReport
 			geneNames   = geneNames,
 			group       = group,
 			sectionType = sectionType,
-			cexRow      = cexRow
+			cexRow      = cexRow,
+			cexCol      = cexCol
 		)
 		
 		case large = StringInput(content="dummy")

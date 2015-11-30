@@ -83,7 +83,7 @@ function getGOEnrichmentReport
 	(
 		goTable, 
 		refsGOEnrich,
-		caption      = "Enriched gene ontology (GO) terms~\\cite{Ashburner2000} (FDR corrected $p\\le"+threshold+"$) comparing " + ID + ". "+
+		caption      = "Enriched gene ontology (GO) terms~\\cite{Ashburner2000} (FDR corrected $p\\le"+threshold+"$) comparing " + std.quote(ID, type="Latex") + ". "+
 					   "'pBG' and 'pDEG' is the fraction of genes annotated with that GO term among all expressed genes and differentially expressed genes, respectively. "+
 					   "List sorted by FDR corrected p-values. "+
 					   "Red and blue colors refer to \\textcolor{red}{up}- and \\textcolor{blue}{down}-regulated genes, respectively.",

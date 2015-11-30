@@ -40,7 +40,7 @@ function degExcelOutput
 				GROUP BY G."ids", D."Description", CONCAT(D."Chromosome Name", D."Band"), G."fc'''+ID+'''", G."meanExprE'''+ID+'''", G."meanExprC'''+ID+'''", G."p'''+ID+'''", G."q'''+ID+'''", '''+quotedSampleIds+'''
 				ORDER  BY "q'''+ID+'''", ABS("fc'''+ID+'''") DESC
 				''',
-			@name  = "degAnnotated_" + ID,
+			@name  = "degAnnotated_" + std.quote(ID, type="Anduril"),
 			@enabled = true
 		)
 		degAnnotatedLst[ID] = degAnnotated

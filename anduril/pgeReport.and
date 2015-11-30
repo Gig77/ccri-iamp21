@@ -14,8 +14,8 @@ function PGEReport
 		reference=reference, 
 		pvalue=pvalue,
 		maxRegionsPerChr=25,
-		sectionTitle="PGE: "+title,
-		caption="Ideogram showing the genomic location of differentially expressed genes (DEG; comparing "+title+") and enriched chromosomal regions. DEGs are indicated above " +
+		sectionTitle="PGE: " + std.quote(title, type="Latex"),
+		caption="Ideogram showing the genomic location of differentially expressed genes (DEG; comparing "+std.quote(title, type="Latex")+") and enriched chromosomal regions. DEGs are indicated above " +
 		        "chromosomes with red tick marks. If found, significantly enriched chromosomal regions (p-value below "+pvalue+") are shown as blue segments below chromosomes. Segment color intensity " +
 		        "reflects statistical significance, from most significant (dark blue) to least significant (light blue). Enriched " +
 		        "regions may overlap in which case segments are drawn on top of each other.",
@@ -43,7 +43,7 @@ function PGEReport
 	enrichedRegions = CSV2Latex
 	(
 		tabledata	 = annotated,
-        caption      = "List of significantly enriched regions comparing "+title+". Differentially expressed genes (DEGs) found in enriched "+
+        caption      = "List of significantly enriched regions comparing "+std.quote(title, type="Latex")+". Differentially expressed genes (DEGs) found in enriched "+
                        "regions are shown in the last column, whereas up-regulated genes are shown in \\textcolor{red}{red} and " +
                        "down-regulated genes are shown in \\textcolor{blue}{blue}. Regions sorted by p-value (most to least significant).",
 //      columns      = "chr,start,end,pvalue,pvalueadj,common,size",

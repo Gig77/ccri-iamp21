@@ -12,7 +12,8 @@ function getDEGTableReport
 	record comparison,
 	string ID,
 	string section = "",
-	string sectionType = ""
+	string sectionType = "",
+	string design = ""
 ) -> (Latex report)
 {
 	// filter genes based on direction?
@@ -45,8 +46,12 @@ function getDEGTableReport
 	if (ID == "iAMPspecific") {
 		caption = caption + " Genes with potential differential expression between ER and DS samples (qValue below " + qLimitExclude + ") were excluded."
 	} 
+
+	if (design != "") {
+		caption = caption + " The design formula used for calling DEGs is '" + std.quote(design, type="Latex") + "'."
+	} 
 	
-	caption = caption + " Table sorted by qValue."
+	caption = caption + " Table sorted by absolute fold-change in descending order."
 
 	degReport = CSV2Latex
 	(

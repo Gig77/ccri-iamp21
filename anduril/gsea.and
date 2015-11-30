@@ -1060,14 +1060,14 @@ function getGSEAOverlapReport
 			hsigCutoff=hsigCutoff,
 			sectionTitle = "Overlap dendrogram " + ID + " Up",
 			sectionType  = "subsubsection",
-			@name = "dendrogram"+ID+"Up"
+			@name = "dendrogram" + std.quote(ID, type="Anduril") +"Up"
 		)
 
 		content = REvaluate
 		(
 			table1 = overlap.overlaps,
 			script = overlapTableConvertScript,
-			@name = "content"+ID+"Up"
+			@name = "content" + std.quote(ID, type="Anduril") +"Up"
 		)
 		
 		table = CSV2Latex
@@ -1088,14 +1088,14 @@ function getGSEAOverlapReport
 			sectionType  = "subsubsection",
 			skipEmpty    = true,
 			refs         = hyperlinkRule,
-			@name        = "table"+ID+"Up"
+			@name        = "table"+std.quote(ID, type="Anduril")+"Up"
 		)
 		
 		geneFreqContent = TableQuery
 		(
 			table1 = overlap.coreGeneFrequency @require,
 			query  = '''SELECT * FROM table1 WHERE "freq" >= 2 AND "rank" <= ''' + maxRank + ''' LIMIT 100''',
-			@name  = "geneFreqContent_"+ID+"Up"
+			@name  = "geneFreqContent_" + std.quote(ID, type="Anduril") +"Up"
 		)
 
 		geneFreqTable = CSV2Latex
@@ -1114,7 +1114,7 @@ function getGSEAOverlapReport
 			section      = "Core enrichment genes " + ID + " Up",
 			sectionType  = "subsubsection",
 			skipEmpty    = true,
-			@name        = "geneFreqTable"+ID+"Up"
+			@name        = "geneFreqTable" + std.quote(ID, type="Anduril") +"Up"
 		)
 		
 		reports[ID+"Up"] = LatexCombiner
@@ -1124,7 +1124,7 @@ function getGSEAOverlapReport
 			latex3 = geneFreqTable,
 			sectionTitle = ID + " UP",
 			sectionType = "subsection",
-			@name = "report"+ID+"Up"
+			@name = "report" + std.quote(ID, type="Anduril") +"Up"
 		)
 				
 		// --- down-regulated --------------------------------------------------------------------------------------------------------
@@ -1152,14 +1152,14 @@ function getGSEAOverlapReport
 			hsigCutoff=hsigCutoff,
 			sectionTitle = "Overlap dendrogram " + ID + " Down",
 			sectionType  = "subsubsection",
-			@name = "dendrogram"+ID+"Dn"
+			@name = "dendrogram" + std.quote(ID, type="Anduril") +"Dn"
 		)
 
 		content = REvaluate
 		(
 			table1 = overlap.overlaps,
 			script = overlapTableConvertScript,
-			@name = "content"+ID+"Dn"
+			@name = "content" + std.quote(ID, type="Anduril") +"Dn"
 		)
 		
 		table = CSV2Latex
@@ -1180,14 +1180,14 @@ function getGSEAOverlapReport
 			sectionType  = "subsubsection",
 			skipEmpty    = true,
 			refs         = hyperlinkRule,
-			@name        = "table"+ID+"Dn"
+			@name        = "table"+std.quote(ID, type="Anduril")+"Dn"
 		)
 
 		geneFreqContent = TableQuery
 		(
 			table1 = overlap.coreGeneFrequency @require,
 			query  = '''SELECT * FROM table1 WHERE "freq" >= 2 AND "rank" <= ''' + maxRank + ''' LIMIT 100''',
-			@name  = "geneFreqContent_"+ID+"Dn"
+			@name  = "geneFreqContent_" + std.quote(ID, type="Anduril") +"Dn"
 		)
 
 		geneFreqTable = CSV2Latex
@@ -1206,7 +1206,7 @@ function getGSEAOverlapReport
 			section      = "Core enrichment genes " + ID + " Down",
 			sectionType  = "subsubsection",
 			skipEmpty    = true,
-			@name        = "geneFreqTable"+ID+"Dn"
+			@name        = "geneFreqTable" + std.quote(ID, type="Anduril") +"Dn"
 		)
 		
 		reports[ID+"Dn"] = LatexCombiner
@@ -1216,7 +1216,7 @@ function getGSEAOverlapReport
 			latex3 = geneFreqTable,
 			sectionTitle = ID + " DN",
 			sectionType = "subsection",
-			@name = "report"+ID+"Dn"
+			@name = "report" + std.quote(ID, type="Anduril") +"Dn"
 		)
 	}
 	
@@ -1245,14 +1245,14 @@ function getGSEAOverlapReport
 		hsigCutoff=hsigCutoff,
 		sectionTitle = "Overlap dendrogram hematologic " + ID + " Up",
 		sectionType  = "subsubsection",
-		@name = "dendrogram"+ID+"UpHematologic"
+		@name = "dendrogram" + std.quote(ID, type="Anduril") +"UpHematologic"
 	)
 
 	content = REvaluate
 	(
 		table1 = overlap.overlaps,
 		script = overlapTableConvertScript,
-		@name = "content"+ID+"UpHematologic"
+		@name = "content" + std.quote(ID, type="Anduril") +"UpHematologic"
 	)
 		
 	table = CSV2Latex
@@ -1273,7 +1273,7 @@ function getGSEAOverlapReport
 		sectionType  = "subsubsection",
 		skipEmpty    = true,
 		refs         = hyperlinkRule,
-		@name        = "table"+ID+"UpHematologic"
+		@name        = "table"+std.quote(ID, type="Anduril")+"UpHematologic"
 	)
 		
 	reports[ID+"UpHematologic"] = LatexCombiner
@@ -1282,7 +1282,7 @@ function getGSEAOverlapReport
 		latex2 = table,
 		sectionTitle = ID + " Hematologic UP",
 		sectionType = "subsection",
-		@name = "report"+ID+"UpHematologic"
+		@name = "report" + std.quote(ID, type="Anduril") +"UpHematologic"
 	)
 	
 	// ---------------------
@@ -1318,7 +1318,7 @@ function tableReports
 	
 	for ID, group : reportGroups 
 	{			
-		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filterScript, @name = "filtered"+ID+"Up")
+		filteredUp = REvaluate(table1 = enrichedUp[ID], script = filterScript, @name = "filtered"+std.quote(ID, type="Anduril")+"Up")
 		tableUp = latexTable 
 		(
 			tabledata = filteredUp.table,
@@ -1328,10 +1328,10 @@ function tableReports
 			minSetSize = minSetSize,
 			maxSetSize = maxSetSize,
 			includeDescription = includeDescription,
-			@name     = "table"+ID+"Up"
+			@name     = "table"+std.quote(ID, type="Anduril")+"Up"
 		) 		
 
-		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filterScript, @name = "filtered"+ID+"Dn")
+		filteredDn = REvaluate(table1 = enrichedDn[ID], script = filterScript, @name = "filtered"+std.quote(ID, type="Anduril")+"Dn")
 		tableDn = latexTable 
 		(
 			tabledata = filteredDn.table, 
@@ -1341,7 +1341,7 @@ function tableReports
 			minSetSize = minSetSize,
 			maxSetSize = maxSetSize,
 			includeDescription = includeDescription,
-			@name     = "table"+ID+"Dn"
+			@name     = "table"+std.quote(ID, type="Anduril")+"Dn"
 		)
 
 		rep[ID] = LatexCombiner 
@@ -1350,7 +1350,7 @@ function tableReports
 			latex2 = tableDn,
 			sectionTitle = ID,
 			sectionType = sectionType,
-			@name       = "report"+ID
+			@name       = "report" + std.quote(ID, type="Anduril")
 		)
 	}
 	

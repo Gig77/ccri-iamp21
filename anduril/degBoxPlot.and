@@ -17,12 +17,12 @@ function getDEGBoxPlots
 	// which direction?
 	if (direction == "up") {
 		degsFiltered = TableQuery(table1 = degs, query='SELECT "ids" FROM table1 WHERE "fc" > 0 LIMIT 28')
-		caption = 'Top-28 genes with higher expression in '+comparison.caseG+" than "+comparison.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."
+		caption = 'Top-28 genes with higher expression in '+comparison.caseG+" than "+comparison.controlG+" samples. Genes ordered by absolute fold-change from top-left to bottom-right."
 		sectionTitle = 'Top-28 significant genes with higher expression in '+comparison.caseG+' than '+comparison.controlG+' samples'                         
 	} 
 	else if (direction == "down") {
 		degsFiltered = TableQuery(table1 = degs, query='SELECT "ids" FROM table1 WHERE "fc" < 0 LIMIT 28')                        
-		caption = 'Top-28 genes with lower expression in '+comparison.caseG+" than "+comparison.controlG+" samples. Genes ordered by statistical significance (qValue) from top-left to bottom-right."                         
+		caption = 'Top-28 genes with lower expression in '+comparison.caseG+" than "+comparison.controlG+" samples. Genes ordered by absolute fold-change from top-left to bottom-right."                         
 		sectionTitle = 'Top-28 significant genes with lower expression in '+comparison.caseG+' than '+comparison.controlG+' samples'                         
 	}
 	else {
