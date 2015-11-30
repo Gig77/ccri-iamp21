@@ -157,7 +157,7 @@ for comparison : std.itercsv(comparisons)
 //--- EXPERIMENTAL SETUP REPORT
 //------------------------------------------------------------------------------------------------
 
-include "experimentalSetup.and"
+include "/mnt/project/iamp/anduril/includes/experimentalSetup.and"
 
 experimentReport = experimentalSetupReport
 (
@@ -218,7 +218,7 @@ deseqExprMatrix = DESeqExpr
 //--- QUALITY CONTROL
 //------------------------------------------------------------------------------------------------
 
-include "qc.and"
+include "/mnt/project/iamp/anduril/includes/qc.and"
 
 qcReport  = getQCReport
 (
@@ -360,11 +360,11 @@ degReportLst = record(venn=venn.report)
 //--- DEG REPORTS
 //------------------------------------------------------------------------------------------------
 
-include "degTable.and"
-include "degBoxPlot.and"
-include "goClustering.and"
-include "goEnrichment.and"
-include "expressionHeatmap.and"
+include "/mnt/project/iamp/anduril/includes/degTable.and"
+include "/mnt/project/iamp/anduril/includes/degBoxPlot.and"
+include "/mnt/project/iamp/anduril/includes/goClustering.and"
+include "/mnt/project/iamp/anduril/includes/goEnrichment.and"
+include "/mnt/project/iamp/anduril/includes/expressionHeatmap.and"
 
 ensembl2ucsc = BashEvaluate
 (
@@ -846,7 +846,7 @@ boxplotSelectedGenes = LatexCombiner
 //--- POSITIONAL GENE ENRICHMENT
 //------------------------------------------------------------------------------------------------
 
-include "pgeReport.and"
+include "/mnt/project/iamp/anduril/includes/pgeReport.and"
 
 pgeReportLst = record()
 for comparison : std.itercsv(comparisons) {
@@ -1170,7 +1170,7 @@ OUTPUT(combinedPDFGsea.document)
 //--- MUTATION REPORT
 //------------------------------------------------------------------------------------------------
 
-include "/mnt/projects/generic/scripts/anduril/mutations.and"
+include "/mnt/project/iamp/anduril/includes/mutations.and"
 
 mutationReport = MutationReport
 (
@@ -1197,7 +1197,7 @@ OUTPUT(mutationPDF.document)
 //--- EXCEL FILES WITH DIFFERENTIALLY EXPRESSED GENES
 //------------------------------------------------------------------------------------------------
 
-include "degExcel.and"
+include "/mnt/project/iamp/anduril/includes/degExcel.and"
 
 degExcel = degExcelOutput
 (
