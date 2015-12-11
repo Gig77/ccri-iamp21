@@ -457,7 +457,7 @@ for ID, group : comparisonGroups
 	(
 		exprMatrix = exprMatrixFiltered,
 		geneNames = geneNames,
-		group = group,
+		comparison = group,
 		sectionType="subsubsection",
 		@name = "heatmap" + std.quote(ID, type="Anduril")
 	)
