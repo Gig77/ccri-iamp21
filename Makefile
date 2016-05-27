@@ -208,7 +208,7 @@ gsea/msigdb5/gsea-heatmap.chr.pdf: gsea/msigdb5/iAMP_vs_DS.gsea gsea/msigdb5/iAM
 gsea/msigdb4/%.gsea: gsea/rnk/%.rnk 
 	mkdir -p gsea/msigdb4
 	rm -rf $@*
-	java -cp /home/STANNANET/christian.frech/tools/gsea-2.0.13/gsea2-2.0.13.jar -Xmx3048m xtools.gsea.GseaPreranked \
+	java -cp /data_synology/software/gsea-2.0.13/gsea2-2.0.13.jar -Xmx3048m xtools.gsea.GseaPreranked \
 		-rpt_label $(notdir $@) \
 		-rnk $< \
 		-gmx gseaftp.broadinstitute.org://pub/gsea/gene_sets/c1.all.v4.0.symbols.gmt,gseaftp.broadinstitute.org://pub/gsea/gene_sets/c2.all.v4.0.symbols.gmt,gseaftp.broadinstitute.org://pub/gsea/gene_sets/c3.all.v4.0.symbols.gmt,gseaftp.broadinstitute.org://pub/gsea/gene_sets/c4.all.v4.0.symbols.gmt,gseaftp.broadinstitute.org://pub/gsea/gene_sets/c5.all.v4.0.symbols.gmt,gseaftp.broadinstitute.org://pub/gsea/gene_sets/c6.all.v4.0.symbols.gmt,gseaftp.broadinstitute.org://pub/gsea/gene_sets/c7.all.v4.0.symbols.gmt \
@@ -225,7 +225,7 @@ gsea/msigdb4/%.gsea: gsea/rnk/%.rnk
 gsea/msigdb5/%.gsea: gsea/rnk/%.rnk /mnt/projects/generic/data/msigdb5.0/msigdb.v5.0.symbols.gmt gsea/custom/mir_target_genesets.gmx
 	mkdir -p gsea/msigdb5
 	rm -rf $@*
-	java -cp /home/STANNANET/christian.frech/tools/gsea-2.0.13/gsea2-2.0.13.jar -Xmx3048m xtools.gsea.GseaPreranked \
+	java -cp /data_synology/software/gsea-2.0.13/gsea2-2.0.13.jar -Xmx3048m xtools.gsea.GseaPreranked \
 		-rpt_label $(notdir $@) \
 		-rnk $< \
 		-gmx /mnt/projects/generic/data/msigdb5.0/msigdb.v5.0.symbols.gmt,gsea/custom/mir_target_genesets.gmx \
@@ -242,7 +242,7 @@ gsea/msigdb5/%.gsea: gsea/rnk/%.rnk /mnt/projects/generic/data/msigdb5.0/msigdb.
 gsea/custom/%.gsea: gsea/rnk/%.rnk gsea/custom/mir_target_genesets.gmx
 	mkdir -p gsea/custom
 	rm -rf $@*
-	java -cp /home/STANNANET/christian.frech/tools/gsea-2.0.13/gsea2-2.0.13.jar -Xmx3048m xtools.gsea.GseaPreranked \
+	java -cp /data_synology/software/gsea-2.0.13/gsea2-2.0.13.jar -Xmx3048m xtools.gsea.GseaPreranked \
 		-rpt_label $(notdir $@) \
 		-rnk $< \
 		-gmx gsea/custom/mir_target_genesets.gmx \
