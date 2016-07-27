@@ -155,7 +155,8 @@ for comparison : std.itercsv(inputComparisons)
 		'pLimit'      = comparison.pLimit,
 		'qLimit'      = comparison.qLimit,
 		'exprLimit'   = comparison.exprLimit,
-		'desc'        = comparison.Description
+		'desc'        = comparison.Description,
+		'gsea'        = comparison.GSEA
 	}
 }
 
@@ -1094,10 +1095,20 @@ OUTPUT(functioPDF.document)
 //------------------------------------------------------------------------------------------------
 include "/mnt/projects/iamp/anduril/includes/gsea.and"
 
+// filter comparisons for which GSEA is requested
+
+comparisonsGSEA = record()
+for ID, comparison : comparisons
+{
+	if (comparison.gsea == "yes") {
+		comparisonsGSEA[ID] = comparison
+	}
+}
+
 // produce RNK files for each comparison
 
 rnks = record()
-for ID, comparison : comparisons 
+for ID, comparison : comparisonsGSEA 
 {	
 	rnks[ID] = DEG2Rnk
 	(
@@ -1127,7 +1138,7 @@ enrichedDn[category] = record()
 minSetSize[category] = 5
 maxSetSize[category] = 5000
 
-for ID, comparison : comparisons 
+for ID, comparison : comparisonsGSEA 
 {	
 	gseaMSigDB = GSEA
 	(
@@ -1162,7 +1173,7 @@ enrichedDn[category] = record()
 minSetSize[category] = 5
 maxSetSize[category] = 5000
 
-for ID, comparison : comparisons 
+for ID, comparison : comparisonsGSEA 
 {	
 	gseaIKAROS = GSEA
 	(
@@ -1188,7 +1199,7 @@ enrichedDn[category] = record()
 minSetSize[category] = 5
 maxSetSize[category] = 1000
 
-for ID, comparison : comparisons 
+for ID, comparison : comparisonsGSEA 
 {	
 	gseaGeneSigDB = GSEA
 	(
@@ -1214,7 +1225,7 @@ enrichedDn[category] = record()
 minSetSize[category] = 3
 maxSetSize[category] = 1000
 
-for ID, comparison : comparisons 
+for ID, comparison : comparisonsGSEA 
 {	
 	gseaDSigDB = GSEA
 	(
@@ -1240,7 +1251,7 @@ enrichedDn[category] = record()
 minSetSize[category] = 3
 maxSetSize[category] = 5000
 
-for ID, comparison : comparisons 
+for ID, comparison : comparisonsGSEA 
 {	
 	gseaTFTargets = GSEA
 	(
@@ -1269,7 +1280,7 @@ gseaReport = GSEAReport
 	enrichedDn = enrichedDn,
 	minSetSizes = minSetSize,
 	maxSetSizes = maxSetSize,
-	tableReportComparisons = comparisons,
+	tableReportComparisons = comparisonsGSEA,
 	topNHeatmap = 80,
 	topNTable = 100,
 	expression = degAllLst,
